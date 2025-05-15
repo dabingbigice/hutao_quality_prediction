@@ -25,7 +25,7 @@ class DeeplabV3(object):
         #   训练好后logs文件夹下存在多个权值文件，选择验证集损失较低的即可。
         #   验证集损失较低不代表miou较高，仅代表该权值在验证集上泛化性能较好。
         # -------------------------------------------------------------------#
-        "model_path": './model/model_data/ghostnet.pth',
+        "model_path": './model/model_data/ep120.pth',
 
         # ----------------------------------------#
         #   所需要区分的类的个数+1
@@ -197,20 +197,21 @@ class DeeplabV3(object):
             for i in range(self.num_classes):
                 num = np.sum(pr == i)
                 ratio = num / total_points_num * 100
-                if num > 0:
-                    print("|%25s | %15s | %14.2f%%|" % (str(name_classes[i]), str(num), ratio))
-                    text += "|%25s | %15s | %14.2f%%|" % (str(name_classes[i]), str(num), ratio) + "\n"
-                    text += '-' * 63 + "\n"
-                    print('-' * 63)
-                classes_nums[i] = num
-                if i != 0 and ratio > hutao_ratio:
+
+                if i != 0:
                     # 返回最大的ration作为分类结果
-                    hutao_ratio = ratio
-                    class_flag = i
-                    area_num=num
+                    hutao_ratio += ratio
+                    class_flag = 1
+                    area_num += num
                 if i == 0 and ratio > 99.5:
                     class_flag = 0
 
+                if num > 0:
+                    print("|%25s | %15s | %14.2f%%|" % (str(name_classes[class_flag]), str(num), ratio))
+                    text += "|%25s | %15s | %14.2f%%|" % (str(name_classes[class_flag]), str(num), ratio) + "\n"
+                    text += '-' * 63 + "\n"
+                    print('-' * 63)
+                classes_nums[i] = num
             print("classes_nums:", classes_nums)
             text += "classes_nums:"
             text += str(classes_nums)
@@ -252,7 +253,7 @@ class DeeplabV3(object):
             image = Image.fromarray(np.uint8(seg_img))
         t4 = time.time()
         print(f'deeplab后处理时间:{(t4 - t3) * 1000}ms')
-        return image, text, hutao_ratio, class_flag,area_num
+        return image, text, hutao_ratio, class_flag, area_num
 
 
 def get_FPS(self, image, test_interval):

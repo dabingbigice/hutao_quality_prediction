@@ -107,6 +107,8 @@ os.makedirs(CAPTURE_DIR, exist_ok=True)  # 自动创建目录
 
 is_cap = False
 
+from excel_data import append_to_excel
+
 
 # 新增拍照功能
 def capture_image():
@@ -139,13 +141,10 @@ def capture_image():
             fps = (fps + (1. / (t2 - t1))) / 2
             fps = (fps + (1. / (time.time() - t1))) / 2
             print("fps= %.2f" % (fps))
-            frame = cv2.putText(frame, "fps= %.2f" % (fps), (0, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            # frame = cv2.putText(frame, "fps= %.2f" % (fps), (0, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
             var.set(f'{my_class[class_flag]}:{ratio:.2f}%')
             var_area.set(f'{area_num:.2f}px')
 
-            # 动态适配画布尺寸
-            canvas_width = show_img_1.winfo_width()
-            canvas_height = show_img_1.winfo_height()
             # 动态适配画布尺寸（显示用）
             img = Image.fromarray(frame)
             img = img.resize((320, 320), Image.LANCZOS)
@@ -165,22 +164,25 @@ def capture_image():
             show_img_1.create_image(0, 0, anchor="nw", image=photo)
             show_img_1.image = photo  # 保持引用
 
-            # 计算椭圆a,b
-            _, a, b = ellipse_fitting(save_path)
-
             # 周长,保存标注后的周长掩码
-            perimeter = hutao_perimeter(save_path)
+            # perimeter = hutao_perimeter(save_path)
+            # 计算椭圆a,b
+            _, a, b,perimeter = ellipse_fitting(save_path, area_num)
 
             print(f'perimeter={perimeter}')
             var_perimeter.set(f'{perimeter:.2f}px')
-            circularity = (4 * math.pi * area_num) / (perimeter ** 2)
-            print(f"圆形度: {circularity:.2f}")
+            circularity = area_num / perimeter
+            print(f"面积/周长: {circularity:.2f}")
 
             var_circularity.set(f'{circularity:.2f}')
-            if circularity > 0.8:  # 设定阈值筛选高圆形度目标
-                pass
-
             var_aspect_ratio.set(f'A={a:.1f},B={b:.1f},/={a / b:.1f}')
+
+            value = var_input.get()  # 直接获取输入值
+            g = float(value)  # 转换为浮点数
+            new_data = [
+                [area_num, perimeter, a, b, a / b, area_num / perimeter, g]  # 数据对应area_num, perimeter, a, b,a/b,a/p
+            ]
+            append_to_excel('核桃仁表型信息.xlsx', new_data)
 
     if current_frame is not None:
         # 生成唯一文件名
@@ -243,7 +245,7 @@ with torch.no_grad():
         global cap, is_camera_running, current_frame
         if not is_camera_running:
             # 初始化摄像头
-            cap = cv2.VideoCapture(0)
+            cap = cv2.VideoCapture(1)
             is_camera_running = True
             update_camera_frame()  # 开始更新画面
         else:
@@ -362,7 +364,7 @@ with torch.no_grad():
     pre_label_perimeter = Label(root, text='周长: ', font=pre_Style)
     pre_label_perimeter.place(relx=0.53, rely=0.27, anchor='nw', relwidth=0.15, relheight=0.05)
 
-    pre_label_perimeter = Label(root, text='圆形度: ', font=pre_Style)
+    pre_label_perimeter = Label(root, text='面积/周长: ', font=pre_Style)
     pre_label_perimeter.place(relx=0.53, rely=0.34, anchor='nw', relwidth=0.15, relheight=0.05)
     pre_label_perimeter = Label(root, text='长轴/短轴: ', font=pre_Style)
     pre_label_perimeter.place(relx=0.53, rely=0.41, anchor='nw', relwidth=0.15, relheight=0.05)
@@ -383,6 +385,35 @@ with torch.no_grad():
     predictive_var_circularity = Label(root, textvariable=var_aspect_ratio, font=pre_Style, borderwidth=5,
                                        relief='groove')
     predictive_var_circularity.place(relx=0.69, rely=0.41, anchor='nw', relwidth=0.3, relheight=0.05)
+    import tkinter as tk
+
+    # 在现有变量定义后添加新的StringVar
+    var_input = tk.StringVar()  # 新增变量用于绑定输入框
+
+
+    # 输入验证函数
+    def validate_float(input_str):
+        """浮点数输入验证，最多允许一个小数点"""
+        if input_str.count('.') <= 1 and (input_str.replace('.', '', 1).isdigit() or input_str == ""):
+            return True
+        return False
+
+
+    input_label = tk.Label(root, text='滤波阈值: ', font=pre_Style)
+    input_label.place(relx=0.53, rely=0.48, anchor='nw', relwidth=0.15, relheight=0.05)
+
+    # 浮点数输入框
+    vcmd = root.register(validate_float)  # 注册验证函数
+    input_entry = tk.Entry(
+        root,
+        textvariable=var_input,
+        validate="key",  # 实时验证输入
+        validatecommand=(vcmd, '%P'),
+        font=pre_Style,
+        borderwidth=5,
+        relief='groove'
+    )
+    input_entry.place(relx=0.69, rely=0.48, anchor='nw', relwidth=0.3, relheight=0.05)
 
     # 在按钮布局区域添加（放在预测按钮下方）
     capture_btn = Button(root, text='拍照保存', command=capture_image,
