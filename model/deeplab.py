@@ -127,7 +127,7 @@ class DeeplabV3(object):
             t_old_start = time.time()
             old_img = copy.deepcopy(image)
             t_old_end = time.time()
-            print(f'备份old的时间:{(t_old_end - t_old_start) * 1000}')
+            # print(f'备份old的时间:{(t_old_end - t_old_start) * 1000}')
 
         orininal_h = np.array(image).shape[0]
         orininal_w = np.array(image).shape[1]
@@ -152,12 +152,12 @@ class DeeplabV3(object):
             #   图片传入网络进行预测
             # ---------------------------------------------------#
             t2 = time.time()
-            print(f'deeplab:前处理时间:{(t2 - t1) * 1000}ms')
+            # print(f'deeplab:前处理时间:{(t2 - t1) * 1000}ms')
 
             t1 = time.time()
             pr = self.net(images)[0]
             t2 = time.time()
-            print(f'deeplab:预测时间:{(t2 - t1) * 1000}ms')
+            # print(f'deeplab:预测时间:{(t2 - t1) * 1000}ms')
             # ---------------------------------------------------#
             #   取出每一个像素点的种类
             # ---------------------------------------------------#
@@ -188,10 +188,10 @@ class DeeplabV3(object):
             classes_nums = np.zeros([self.num_classes])
             total_points_num = orininal_h * orininal_w
             text += '-' * 63 + "\n"
-            print('-' * 63)
-            print("|%25s | %15s | %15s|" % ("Key", "Value", "Ratio"))
+            # print('-' * 63)
+            # print("|%25s | %15s | %15s|" % ("Key", "Value", "Ratio"))
             text += "|%25s | %15s | %15s|" % ("Key", "Value", "Ratio") + "\n"
-            print('-' * 63)
+            # print('-' * 63)
             text += '-' * 63 + "\n"
             # hutao的像素比率
             for i in range(self.num_classes):
@@ -207,12 +207,12 @@ class DeeplabV3(object):
                     class_flag = 0
 
                 if num > 0:
-                    print("|%25s | %15s | %14.2f%%|" % (str(name_classes[class_flag]), str(num), ratio))
+                    # print("|%25s | %15s | %14.2f%%|" % (str(name_classes[class_flag]), str(num), ratio))
                     text += "|%25s | %15s | %14.2f%%|" % (str(name_classes[class_flag]), str(num), ratio) + "\n"
                     text += '-' * 63 + "\n"
-                    print('-' * 63)
+                    # print('-' * 63)
                 classes_nums[i] = num
-            print("classes_nums:", classes_nums)
+            # print("classes_nums:", classes_nums)
             text += "classes_nums:"
             text += str(classes_nums)
         t4 = time.time()
@@ -252,7 +252,7 @@ class DeeplabV3(object):
             # ------------------------------------------------#
             image = Image.fromarray(np.uint8(seg_img))
         t4 = time.time()
-        print(f'deeplab后处理时间:{(t4 - t3) * 1000}ms')
+        # print(f'deeplab后处理时间:{(t4 - t3) * 1000}ms')
         return image, text, hutao_ratio, class_flag, area_num
 
 

@@ -127,20 +127,20 @@ def capture_image():
             # 进行检测
             img, text, ratio, class_flag, area_num = deeplab.detect_image(frame, count=True, name_classes=my_class)
 
-            print(f'检测结果,text={text}\n,ratio={ratio},\n class_flag={class_flag}\n')
+            # print(f'检测结果,text={text}\n,ratio={ratio},\n class_flag={class_flag}\n')
 
             # class_flag：0是背景，1是all,2是half,3是other
             t2 = time.time()
             # TODO 检测完成之后开启另外一个线程去显示画面。
             delta_ms = (t2 - t1) * 1000
-            print(f"deeplab.detect_image检测速度: {delta_ms:.3f} 毫秒")
+            # print(f"deeplab.detect_image检测速度: {delta_ms:.3f} 毫秒")
             frame = np.array(img)
 
             # RGBtoBGR满足opencv显示格式
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
             fps = (fps + (1. / (t2 - t1))) / 2
             fps = (fps + (1. / (time.time() - t1))) / 2
-            print("fps= %.2f" % (fps))
+            # print("fps= %.2f" % (fps))
             # frame = cv2.putText(frame, "fps= %.2f" % (fps), (0, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
             var.set(f'{my_class[class_flag]}:{ratio:.2f}%')
             var_area.set(f'{area_num:.2f}px')
@@ -167,12 +167,12 @@ def capture_image():
             # 周长,保存标注后的周长掩码
             # perimeter = hutao_perimeter(save_path)
             # 计算椭圆a,b
-            _, a, b,perimeter = ellipse_fitting(save_path, area_num)
+            _, a, b,perimeter,error = ellipse_fitting(save_path, area_num)
 
-            print(f'perimeter={perimeter}')
+            # print(f'perimeter={perimeter}')
             var_perimeter.set(f'{perimeter:.2f}px')
             circularity = area_num / perimeter
-            print(f"面积/周长: {circularity:.2f}")
+            # print(f"面积/周长: {circularity:.2f}")
 
             var_circularity.set(f'{circularity:.2f}')
             var_aspect_ratio.set(f'A={a:.1f},B={b:.1f},/={a / b:.1f}')
@@ -180,7 +180,7 @@ def capture_image():
             value = var_input.get()  # 直接获取输入值
             g = float(value)  # 转换为浮点数
             new_data = [
-                [area_num, perimeter, a, b, a / b, area_num / perimeter, g]  # 数据对应area_num, perimeter, a, b,a/b,a/p
+                [area_num, perimeter, a, b, a / b, area_num / perimeter, g,error]  # 数据对应area_num, perimeter, a, b,a/b,a/p
             ]
             append_to_excel('核桃仁表型信息.xlsx', new_data)
 
@@ -281,12 +281,12 @@ with torch.no_grad():
                 t1 = time.time()
                 # 进行检测
                 img, text, ratio, class_flag, area_num = deeplab.detect_image(frame, count=True, name_classes=my_class)
-                print(f'检测结果,text={text}\n,ratio={ratio},\n class_flag={class_flag}\n')
+                # print(f'检测结果,text={text}\n,ratio={ratio},\n class_flag={class_flag}\n')
                 # class_flag：0是背景，1是all,2是half,3是other
                 t2 = time.time()
                 # TODO 检测完成之后开启另外一个线程去显示画面。
                 delta_ms = (t2 - t1) * 1000
-                print(f"deeplab.detect_image检测速度: {delta_ms:.3f} 毫秒")
+                # print(f"deeplab.detect_image检测速度: {delta_ms:.3f} 毫秒")
                 frame = np.array(img)
 
                 # RGBtoBGR满足opencv显示格式
@@ -294,7 +294,7 @@ with torch.no_grad():
                 # 转换颜色空间并添加时间戳
                 fps = (fps + (1. / (t2 - t1))) / 2
                 fps = (fps + (1. / (time.time() - t1))) / 2
-                print("fps= %.2f" % (fps))
+                # print("fps= %.2f" % (fps))
                 frame = cv2.putText(frame, "fps= %.2f" % (fps), (0, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                 var.set(f'{my_class[class_flag]}:{ratio:.2f}%')
 

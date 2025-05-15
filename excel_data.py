@@ -14,7 +14,7 @@ def append_to_excel(file_path, new_data):
         ]
     """
     # 转换数据为DataFrame
-    df_new = pd.DataFrame(new_data, columns=['area_num', 'perimeter', 'a', 'b', 'a/b', 'area_num/perimeter', 'g'])
+    df_new = pd.DataFrame(new_data, columns=['area_num', 'perimeter', 'a', 'b', 'a/b', 'area_num/perimeter', 'g','error'])
 
     # 自动生成计算列
     # df_new['a/b'] = df_new['a'] / df_new['b']
@@ -29,6 +29,7 @@ def append_to_excel(file_path, new_data):
 
         # 追加数据（跳过表头）
         df_new.to_excel(writer, startrow=start_row, index=False, header=False)
+        print(f'excel保存成功={df_new}')
 
 
 # 使用示例 ---------------------------------------------------
