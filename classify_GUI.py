@@ -183,7 +183,8 @@ def capture_image():
                 [area_num, perimeter, a, b, a / b, area_num / perimeter, g,error]  # 数据对应area_num, perimeter, a, b,a/b,a/p
             ]
             append_to_excel('核桃仁表型信息.xlsx', new_data)
-
+            # 重置
+            var_input.set(str(''))
     if current_frame is not None:
         # 生成唯一文件名
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
