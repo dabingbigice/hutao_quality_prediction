@@ -167,7 +167,7 @@ def capture_image():
             # 周长,保存标注后的周长掩码
             # perimeter = hutao_perimeter(save_path)
             # 计算椭圆a,b
-            _, a, b,perimeter,error = ellipse_fitting(save_path, area_num)
+            _, a, b, perimeter, error = ellipse_fitting(save_path, area_num)
 
             # print(f'perimeter={perimeter}')
             var_perimeter.set(f'{perimeter:.2f}px')
@@ -178,9 +178,10 @@ def capture_image():
             var_aspect_ratio.set(f'A={a:.1f},B={b:.1f},/={a / b:.1f}')
 
             value = var_input.get()  # 直接获取输入值
-            g = float(value)  # 转换为浮点数
+            g = float(value) / 100  # 转换为浮点数
             new_data = [
-                [area_num, perimeter, a, b, a / b, area_num / perimeter, g,error]  # 数据对应area_num, perimeter, a, b,a/b,a/p
+                [area_num, perimeter, a, b, a / b, area_num / perimeter, g, error]
+                # 数据对应area_num, perimeter, a, b,a/b,a/p
             ]
             append_to_excel('核桃仁表型信息.xlsx', new_data)
             # 重置
@@ -421,4 +422,5 @@ with torch.no_grad():
                          font=open_Style, bg="#4CAF50", fg="white")
     capture_btn.place(relx=0.75, rely=0.7, anchor='ne',
                       relwidth=1 / 8, relheight=1 / 12)
+    root.bind('<Return>', lambda event: capture_image())
     root.mainloop()
