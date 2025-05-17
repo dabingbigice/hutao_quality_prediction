@@ -9,23 +9,23 @@ import scipy.stats as stats
 from sklearn.svm import SVR
 from sklearn.ensemble import RandomForestRegressor
 from xgboost import XGBRegressor
-from lightgbm import LGBMRegressor
 
 # 配置参数
-MODEL_CHOICE = 'rf'  # 可选 'svr', 'rf', 'xgb', 'lgb'
+MODEL_CHOICE = 'xgb'  # 可选 'svr', 'rf', 'xgb', 'lgb'
 MODEL_NAMES = {
     'svr': 'Support Vector Regression',
     'rf': 'Random Forest',
     'xgb': 'XGBoost',
-    'lgb': 'LightGBM'
 }
 
 
 def main(RANDOM_STATE):
     # 数据配置
     DATA_PATH = '核桃仁表型信息.xlsx'
-    TEST_SIZE = 0.8
-    FEATURES = ['hutao_area','hutao_perimeter','hutao_area/hutao_perimeter','hutao_a','hutao_b','hutao_a/b']
+    TEST_SIZE = 0.1
+    FEATURES = ['hutao_EW', 'fai', 'hutao_dg', 'hutao_da', 'hutao_EV', 'hutao_ET', 'hutao_SI',
+                'hutao_area', 'hutao_perimeter', 'hutao_area/hutao_perimeter', 'hutao_a',
+                'hutao_b', 'hutao_a/b', 'arithmetic_a_b_avg', 'geometry_avg_a_b', 'hutao_Ra_(b/a)*100']
     TARGET = 'g'
 
     # 数据加载与预处理
@@ -69,16 +69,6 @@ def main(RANDOM_STATE):
                 'n_estimators': stats.randint(100, 500),
                 'max_depth': stats.randint(3, 8),
                 'subsample': stats.uniform(0.6, 0.4)
-            },
-            'n_iter': 30
-        },
-        'lgb': {
-            'model': LGBMRegressor(),
-            'params': {
-                'learning_rate': stats.loguniform(0.01, 0.3),
-                'n_estimators': stats.randint(100, 500),
-                'num_leaves': stats.randint(20, 50),
-                'min_child_samples': stats.randint(10, 30)
             },
             'n_iter': 30
         }
@@ -179,7 +169,7 @@ def main(RANDOM_STATE):
     output_dir = "results_" + f'{MODEL_CHOICE}'
     os.makedirs(output_dir, exist_ok=True)
     plt.savefig(
-        f"{output_dir}/R²_{test_r2}_RMSE_{RANDOM_STATE}_{max_error:.2f}.png",
+        f"{output_dir}/random_{RANDOM_STATE}_R²_{test_r2:.2f}_RMSE_{test_rmse:.2f}_{max_error:.2f}.png",
         dpi=300,
         bbox_inches='tight',
         facecolor='white'

@@ -248,6 +248,9 @@ with torch.no_grad():
         if not is_camera_running:
             # 初始化摄像头
             cap = cv2.VideoCapture(1)
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1536)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 2048)
+
             is_camera_running = True
             update_camera_frame()  # 开始更新画面
         else:
