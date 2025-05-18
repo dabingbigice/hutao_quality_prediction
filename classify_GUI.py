@@ -289,10 +289,10 @@ with torch.no_grad():
         if is_camera_running:
             ret, frame = cap.read()
             # 检查是否设置成功
-            width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
-            height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
-            print(f"设置后的分辨率: {int(width)}x{int(height)}")
-            print(frame.shape)
+            # width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+            # height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+            # print(f"设置后的分辨率: {int(width)}x{int(height)}")
+            # print(frame.shape)
             fps = 0.0
             if ret:
                 frame = cv2.resize(frame, (320, 320))
