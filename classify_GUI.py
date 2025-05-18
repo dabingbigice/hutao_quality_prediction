@@ -116,6 +116,7 @@ def capture_image():
     is_camera_running = True
     if is_camera_running:
         ret, frame = cap.read()
+        print(frame.shape)
         fps = 0.0
         if ret:
             frame = cv2.resize(frame, (320, 320))
@@ -248,8 +249,19 @@ with torch.no_grad():
         if not is_camera_running:
             # 初始化摄像头
             cap = cv2.VideoCapture(1)
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1536)
-            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 2048)
+            # 设置分辨率
+            target_width, target_height = 2048, 1536
+            success_width = cap.set(cv2.CAP_PROP_FRAME_WIDTH, target_width)
+            success_height = cap.set(cv2.CAP_PROP_FRAME_HEIGHT, target_height)
+
+            # 检查分辨率是否设置成功
+            actual_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            actual_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+            if (actual_width, actual_height) == (target_width, target_height):
+                print(f"分辨率已设置为 {actual_width}x{actual_height}")
+            else:
+                print(f"警告：摄像头不支持 {target_width}x{target_height}，实际分辨率 {actual_width}x{actual_height}")
 
             is_camera_running = True
             update_camera_frame()  # 开始更新画面
@@ -276,6 +288,11 @@ with torch.no_grad():
         global current_frame
         if is_camera_running:
             ret, frame = cap.read()
+            # 检查是否设置成功
+            width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+            height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+            print(f"设置后的分辨率: {int(width)}x{int(height)}")
+            print(frame.shape)
             fps = 0.0
             if ret:
                 frame = cv2.resize(frame, (320, 320))
