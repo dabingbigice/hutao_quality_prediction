@@ -180,11 +180,60 @@ def capture_image():
 
             value = var_input.get()  # 直接获取输入值
             g = float(value) / 100  # 转换为浮点数
+
+            # 核桃仁h
+            h = 0.58
+
+            # 椭圆e
+            a, b = max(a, b), min(a, b)  # 自动交换确保a >= b
+            ratio_squared = (b / a) ** 2
+            e = math.sqrt(1 - ratio_squared)
+
+            # 核桃仁标定面积
+            hutao_area = 0.00068 * area_num
+
+            # 核桃仁标定周长
+            hutao_perimeter = perimeter * 0.02596
+
+            # 核桃仁标定周长面积比
+            hutao_area_div_hutao_perimeter = hutao_area / hutao_perimeter
+
+            # 拟合椭圆长半轴标定长
+            hutao_a = a * 0.02596
+
+            # 拟合椭圆短半轴标定长
+            hutao_b = b * 0.02596
+
+            # 长短轴比
+            hutao_a_div_b = hutao_a / hutao_b
+
+            # abh算术平均值
+            arithmetic_a_b_h_avg = (hutao_a + hutao_b + h) / 3
+
+            # abh几何平均值
+            geometry_a_b_h_avg = (hutao_a * hutao_b * h) ** (1 / 3)
+
+            # 形状索引
+            hutao_SI = 2 * hutao_a / (h + hutao_b)
+
+            # 厚度方向的伸长
+            hutao_ET = hutao_a / h
+
+            # 垂直方向的伸长
+            hutao_EV = hutao_b / h
+
+            # 球形度
+            fai = (geometry_a_b_h_avg / hutao_a) * 100
+
             new_data = [
-                [area_num, perimeter, a, b, a / b, area_num / perimeter, g, error]
-                # 数据对应area_num, perimeter, a, b,a/b,a/p
+                [area_num, perimeter, a, b, a / b, area_num / perimeter, g, error,
+                 e, hutao_area, hutao_perimeter, hutao_area_div_hutao_perimeter, hutao_a,
+                 hutao_b, hutao_a_div_b, arithmetic_a_b_h_avg, geometry_a_b_h_avg, hutao_SI,
+                 hutao_ET, hutao_EV, fai, filename
+                 ]
+
             ]
-            append_to_excel('核桃仁表型信息.xlsx', new_data)
+            append_to_excel('核桃仁表型信息_重新标定.xlsx', new_data)
             # 重置
             var_input.set(str(''))
     if current_frame is not None:

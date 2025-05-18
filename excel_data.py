@@ -14,7 +14,11 @@ def append_to_excel(file_path, new_data):
         ]
     """
     # 转换数据为DataFrame
-    df_new = pd.DataFrame(new_data, columns=['area_num', 'perimeter', 'a', 'b', 'a/b', 'area_num/perimeter', 'g','error'])
+    df_new = pd.DataFrame(new_data,
+                          columns=['area_num', 'perimeter', 'a', 'b', 'a/b', 'area_num/perimeter', 'g', 'error', 'e',
+                                   'hutao_area', 'hutao_perimeter', 'hutao_area/hutao_perimeter', 'hutao_a',
+                                   'hutao_b', 'hutao_a/b', 'arithmetic_a_b_h_avg', 'geometry_a_b_h_avg', 'hutao_SI',
+                                   'hutao_ET', 'hutao_EV', 'fai', 'filename'])
 
     # 自动生成计算列
     # df_new['a/b'] = df_new['a'] / df_new['b']
