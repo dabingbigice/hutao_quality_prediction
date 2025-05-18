@@ -198,11 +198,11 @@ class DeeplabV3(object):
                 num = np.sum(pr == i)
                 ratio = num / total_points_num * 100
 
-                if i != 0:
+                if i != 0 and ratio > hutao_ratio:
                     # 返回最大的ration作为分类结果
-                    hutao_ratio += ratio
-                    class_flag = 1
-                    area_num += num
+                    hutao_ratio = ratio
+                    class_flag = i
+                    area_num = num
                 if i == 0 and ratio > 99.5:
                     class_flag = 0
 
