@@ -109,15 +109,41 @@ is_cap = False
 
 from excel_data import append_to_excel
 
+save_dir_captured_orign = "captured_orign_photos"
+
 
 # 新增拍照功能
 def capture_image():
     global current_frame
     is_camera_running = True
     if is_camera_running:
+
+        # 设置亮度,保存破损度分割数据照片
+        if cap.get(cv2.CAP_PROP_BRIGHTNESS) != -1:
+            # 获取当前亮度值（通常范围0-1或0-100，具体取决于驱动）
+            current_brightness = cap.get(cv2.CAP_PROP_BRIGHTNESS)
+            # 尝试设置新亮度（示例值，需根据实际范围调整）
+            target_brightness = 41
+            cap.set(cv2.CAP_PROP_BRIGHTNESS, target_brightness)
+
         ret, frame = cap.read()
-        print(frame.shape)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S%f")[:-3]
+        filename = f"capture_{timestamp}.jpg"
+        save_path = os.path.join(save_dir_captured_orign, filename)
+        # 保存图像（质量参数100%）
+        save_success = cv2.imwrite(save_path, frame, [cv2.IMWRITE_JPEG_QUALITY, 100])
+
+        if save_success:
+            print(f"图片保存成功：{os.path.abspath(save_path)}")
+        else:
+            print(f"错误：保存失败！检查路径权限：{save_path}")
+
+        # 修改回分割模型需要的亮度
+        cap.set(cv2.CAP_PROP_BRIGHTNESS, 64)
+        ret, frame = cap.read()
         fps = 0.0
+
         if ret:
             frame = cv2.resize(frame, (320, 320))
             # 格式转变，BGRtoRGB
@@ -232,7 +258,7 @@ def capture_image():
                 [area_num, perimeter, a, b, a / b, area_num / perimeter, g, error,
                  e, hutao_area, hutao_perimeter, hutao_area_div_hutao_perimeter, hutao_a,
                  hutao_b, hutao_a_div_b, arithmetic_a_b_h_avg, geometry_a_b_h_avg, hutao_SI,
-                 hutao_ET, hutao_EV, fai, filename,hutao_c
+                 hutao_ET, hutao_EV, fai, filename, hutao_c
                  ]
 
             ]
