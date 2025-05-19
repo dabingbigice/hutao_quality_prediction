@@ -254,11 +254,16 @@ def capture_image():
             # 焦距
             hutao_c = np.sqrt(hutao_a ** 2 - hutao_b ** 2)
 
+            # ab算术均值
+            arithmetic_a_b_avg = (hutao_a + hutao_b) / 2
+            # ab几何均值
+            geometry_a_b_avg = (hutao_a * hutao_b) ** (1 / 2)
+
             new_data = [
                 [area_num, perimeter, a, b, a / b, area_num / perimeter, g, error,
                  e, hutao_area, hutao_perimeter, hutao_area_div_hutao_perimeter, hutao_a,
                  hutao_b, hutao_a_div_b, arithmetic_a_b_h_avg, geometry_a_b_h_avg, hutao_SI,
-                 hutao_ET, hutao_EV, fai, filename, hutao_c
+                 hutao_ET, hutao_EV, fai, filename, hutao_c, arithmetic_a_b_avg,geometry_a_b_avg
                  ]
 
             ]

@@ -14,7 +14,9 @@ df = pd.read_excel('核桃仁表型信息_重新标定.xlsx')
 # df['hutao_dg'] = (df['hutao_a'] * df['hutao_b'] * 0.58) ** (1 / 3)
 
 # df['fai'] = (df['hutao_dg'] / df['hutao_a']) * 100
-df['hutao_c'] = np.sqrt(df['hutao_a'] ** 2 - df['hutao_b'] ** 2)
+# df['hutao_c'] = np.sqrt(df['hutao_a'] ** 2 - df['hutao_b'] ** 2)
+df['arithmetic_a_b_avg'] = (df['hutao_a'] + df['hutao_b']) / 2
+df['geometry_a_b_avg'] = (df['hutao_a'] * df['hutao_b']) ** (1 / 2)
 
 # 保存到新Excel文件
 df.to_excel('核桃仁表型信息_重新标定.xlsx', index=False)

@@ -23,8 +23,10 @@ def main(RANDOM_STATE):
     # 数据配置
     DATA_PATH = '核桃仁表型信息_重新标定.xlsx'
     TEST_SIZE = 0.2
-    FEATURES = ['hutao_c','e', 'hutao_area', 'hutao_perimeter', 'hutao_area/hutao_perimeter', 'hutao_a', 'hutao_b', 'hutao_a/b',
-                'arithmetic_a_b_h_avg', 'geometry_a_b_h_avg', 'hutao_SI', 'hutao_ET', 'hutao_EV', 'fai']
+    FEATURES = ['hutao_c', 'e', 'hutao_area', 'hutao_perimeter', 'hutao_area/hutao_perimeter', 'hutao_a', 'hutao_b',
+                'hutao_a/b',
+                'arithmetic_a_b_h_avg', 'geometry_a_b_h_avg', 'hutao_SI', 'hutao_ET', 'hutao_EV', 'fai',
+                'arithmetic_a_b_avg', 'geometry_a_b_avg']
     TARGET = 'g'
 
     # 数据加载与预处理
@@ -222,7 +224,7 @@ def main(RANDOM_STATE):
     #          f"Train RMSE: {train_rmse:.2f}g | Test RMSE: {test_rmse:.2f}g\n"
     #          f"Train R²: {train_r2:.2f} | Test R²: {test_r2:.2f}"
     #          f"error>RMSE_count:{count}")
-    title = (f"{MODEL_CHOICE}_rf | Performance\n"
+    title = (f"{MODEL_CHOICE} | Performance\n"
              f"Train RMSE: {train_rmse:.2f}g | Test RMSE: {test_rmse:.2f}g\n"
              f"Train R²: {train_r2:.2f} | Test R²: {test_r2:.2f}\n"
              f"error>0.25 _count:{count} | percent :{count / len(errors):.2f}\n"
@@ -285,6 +287,5 @@ if __name__ == "__main__":
     print(f"最小 RMSE: {np.min(metrics['test_rmse']):.3f}")
     print(f"最大 R²: {np.max(metrics['test_r2']):.3f}")
     print(f"平均 max_error: {max_error / 100:.3f}")
-    print(f"误差大于rmse: {error_gt_rmse / 100:.3f}")
-    print(f"平均误差大于rmse百分比: {(error_gt_rmse / len_test) :.3f}")
+    print(f"平均误差大于0.25百分比: {(error_gt_rmse / len_test) :.3f}")
     print('=' * 40)
