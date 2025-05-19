@@ -11,7 +11,7 @@ from sklearn.ensemble import RandomForestRegressor
 from xgboost import XGBRegressor
 
 # 配置参数
-MODEL_CHOICE = 'xgb'  # 可选 'svr', 'rf', 'xgb', 'lgb'
+MODEL_CHOICE = 'svr'  # 可选 'svr', 'rf', 'xgb', 'lgb'
 MODEL_NAMES = {
     'svr': 'Support Vector Regression',
     'rf': 'Random Forest',
@@ -21,15 +21,16 @@ MODEL_NAMES = {
 
 def main(RANDOM_STATE):
     # 数据配置
-    DATA_PATH = '核桃仁表型信息.xlsx'
-    TEST_SIZE = 0.1
-    FEATURES = ['hutao_EW', 'fai', 'hutao_dg', 'hutao_da', 'hutao_EV', 'hutao_ET', 'hutao_SI',
-                'hutao_area', 'hutao_perimeter', 'hutao_area/hutao_perimeter', 'hutao_a',
-                'hutao_b', 'hutao_a/b', 'arithmetic_a_b_avg', 'geometry_avg_a_b', 'hutao_Ra_(b/a)*100']
+    DATA_PATH = '核桃仁表型信息_重新标定.xlsx'
+    TEST_SIZE = 0.2
+    FEATURES = ['hutao_c','e', 'hutao_area', 'hutao_perimeter', 'hutao_area/hutao_perimeter', 'hutao_a', 'hutao_b', 'hutao_a/b',
+                'arithmetic_a_b_h_avg', 'geometry_a_b_h_avg', 'hutao_SI', 'hutao_ET', 'hutao_EV', 'fai']
     TARGET = 'g'
 
     # 数据加载与预处理
     df = pd.read_excel(DATA_PATH)
+    # 误差筛选
+    # df = df[df['error'] < 6]
     X = df[FEATURES]
     y = df[TARGET]
 
@@ -75,39 +76,98 @@ def main(RANDOM_STATE):
     }
 
     # 模型初始化
-    config = model_config[MODEL_CHOICE]
+    # config = model_config[MODEL_CHOICE]
+    config_1 = model_config[MODEL_CHOICE]
+    # config_2 = model_config['rf']
+    # config_3 = model_config['rf']
 
     # 交叉验证策略
     cv = KFold(n_splits=5, shuffle=True, random_state=RANDOM_STATE)
-
+    # 1号模型
     # 参数搜索
-    search = RandomizedSearchCV(
-        config['model'],
-        param_distributions=config['params'],
-        n_iter=config['n_iter'],
+    search_1 = RandomizedSearchCV(
+        config_1['model'],
+        param_distributions=config_1['params'],
+        n_iter=config_1['n_iter'],
         cv=cv,
         scoring='neg_mean_squared_error',
         random_state=RANDOM_STATE,
         n_jobs=-1
     )
-    search.fit(X_train, y_train)
-    best_model = search.best_estimator_
+    search_1.fit(X_train, y_train)
+    best_model_1 = search_1.best_estimator_
 
     # 模型评估（测试集）
-    y_pred_test = best_model.predict(X_test)
-    test_rmse = np.sqrt(mean_squared_error(y_test, y_pred_test))
-    test_r2 = r2_score(y_test, y_pred_test)
+    y_pred_test_1 = best_model_1.predict(X_test)
+    test_rmse_1 = np.sqrt(mean_squared_error(y_test, y_pred_test_1))
+    test_r2_1 = r2_score(y_test, y_pred_test_1)
 
     # 训练集评估
-    y_pred_train = best_model.predict(X_train)
-    train_rmse = np.sqrt(mean_squared_error(y_train, y_pred_train))
-    train_r2 = r2_score(y_train, y_pred_train)
+    y_pred_train_1 = best_model_1.predict(X_train)
+    train_rmse_1 = np.sqrt(mean_squared_error(y_train, y_pred_train_1))
+    train_r2_1 = r2_score(y_train, y_pred_train_1)
+
+    # 2号模型
+
+    # search_2 = RandomizedSearchCV(
+    #     config_2['model'],
+    #     param_distributions=config_2['params'],
+    #     n_iter=config_2['n_iter'],
+    #     cv=cv,
+    #     scoring='neg_mean_squared_error',
+    #     random_state=RANDOM_STATE,
+    #     n_jobs=-1
+    # )
+    # search_2.fit(X_train, y_train)
+    # best_model_2 = search_2.best_estimator_
+    #
+    # # 模型评估（测试集）
+    # y_pred_test_2 = best_model_2.predict(X_test)
+    # test_rmse_2 = np.sqrt(mean_squared_error(y_test, y_pred_test_2))
+    # test_r2_2 = r2_score(y_test, y_pred_test_2)
+    #
+    # # 训练集评估
+    # y_pred_train_2 = best_model_2.predict(X_train)
+    # train_rmse_2 = np.sqrt(mean_squared_error(y_train, y_pred_train_2))
+    # train_r2_2 = r2_score(y_train, y_pred_train_2)
+
+    # 3号模型
+
+    # search_3 = RandomizedSearchCV(
+    #     config_3['model'],
+    #     param_distributions=config_3['params'],
+    #     n_iter=config_3['n_iter'],
+    #     cv=cv,
+    #     scoring='neg_mean_squared_error',
+    #     random_state=RANDOM_STATE,
+    #     n_jobs=-1
+    # )
+    # search_3.fit(X_train, y_train)
+    # best_model_3 = search_3.best_estimator_
+    #
+    # # 模型评估（测试集）
+    # y_pred_test_3 = best_model_3.predict(X_test)
+    # test_rmse_3 = np.sqrt(mean_squared_error(y_test, y_pred_test_3))
+    # test_r2_3 = r2_score(y_test, y_pred_test_3)
+    #
+    # # 训练集评估
+    # y_pred_train_3 = best_model_3.predict(X_train)
+    # train_rmse_3 = np.sqrt(mean_squared_error(y_train, y_pred_train_3))
+    # train_r2_3 = r2_score(y_train, y_pred_train_3)
+
+    y_pred_test = y_pred_test_1
+    test_r2 = test_r2_1
+    test_rmse = test_rmse_1
+    train_rmse = train_rmse_1
+    train_r2 = train_r2_1
 
     # 误差分析
     errors = np.abs(y_test.values - y_pred_test)
+
+    # 误差大于0.3g的数量
+    count = (errors > 0.25).sum()
     max_error = errors.max()
     max_idx = errors.argmax()
-    print(f'max_index={max_idx}')
     max_actual = y_test.values[max_idx]
     max_predicted = y_pred_test[max_idx]
 
@@ -158,15 +218,24 @@ def main(RANDOM_STATE):
     # 图形装饰
     ax.set_xlabel(f'Actual Mass (g) seed={RANDOM_STATE}', fontsize=12)
     ax.set_ylabel('Predicted Mass (g)', fontsize=12)
-    title = (f"{MODEL_NAMES[MODEL_CHOICE]} Performance\n"
+    # title = (f"{MODEL_NAMES[MODEL_CHOICE]} Performance\n"
+    #          f"Train RMSE: {train_rmse:.2f}g | Test RMSE: {test_rmse:.2f}g\n"
+    #          f"Train R²: {train_r2:.2f} | Test R²: {test_r2:.2f}"
+    #          f"error>RMSE_count:{count}")
+    title = (f"{MODEL_CHOICE}_rf | Performance\n"
              f"Train RMSE: {train_rmse:.2f}g | Test RMSE: {test_rmse:.2f}g\n"
-             f"Train R²: {train_r2:.2f} | Test R²: {test_r2:.2f}")
+             f"Train R²: {train_r2:.2f} | Test R²: {test_r2:.2f}\n"
+             f"error>0.25 _count:{count} | percent :{count / len(errors):.2f}\n"
+
+             )
     ax.set_title(title, fontsize=14, pad=20)
     ax.legend(loc='upper left')
     ax.grid(True, alpha=0.3, linestyle=':')
 
     plt.tight_layout()
-    output_dir = "results_" + f'{MODEL_CHOICE}'
+    # output_dir = "results_" + f'{MODEL_CHOICE}'
+    output_dir = f"results_{MODEL_CHOICE}/scatter"
+
     os.makedirs(output_dir, exist_ok=True)
     plt.savefig(
         f"{output_dir}/random_{RANDOM_STATE}_R²_{test_r2:.2f}_RMSE_{test_rmse:.2f}_{max_error:.2f}.png",
@@ -176,7 +245,7 @@ def main(RANDOM_STATE):
     )
     plt.show()
 
-    return train_rmse, train_r2, test_rmse, test_r2
+    return train_rmse, train_r2, test_rmse, test_r2, max_error, count, len(y_pred_test)
 
 
 if __name__ == "__main__":
@@ -187,14 +256,20 @@ if __name__ == "__main__":
         'test_rmse': [],
         'test_r2': []
     }
-
+    max_error = 0
+    error_gt_rmse = 0
+    error_gt_rmse_precent = 0
+    len_test = 0
     for i in range(total_runs):
         print(f"\nRun {i + 1}/{total_runs}")
-        train_rmse, train_r2, test_rmse, test_r2 = main(i)
+        train_rmse, train_r2, test_rmse, test_r2, max_error_1, count, len_test = main(i)
         metrics['train_rmse'].append(train_rmse)
         metrics['train_r2'].append(train_r2)
         metrics['test_rmse'].append(test_rmse)
         metrics['test_r2'].append(test_r2)
+        max_error += max_error_1
+        error_gt_rmse += count
+        len_test = len_test
 
     # 汇总统计
     print(f"\n{'=' * 40}")
@@ -209,4 +284,7 @@ if __name__ == "__main__":
     print(f"平均 R²: {np.mean(metrics['test_r2']):.3f} ± {np.std(metrics['test_r2']):.3f}")
     print(f"最小 RMSE: {np.min(metrics['test_rmse']):.3f}")
     print(f"最大 R²: {np.max(metrics['test_r2']):.3f}")
+    print(f"平均 max_error: {max_error / 100:.3f}")
+    print(f"误差大于rmse: {error_gt_rmse / 100:.3f}")
+    print(f"平均误差大于rmse百分比: {(error_gt_rmse / len_test) :.3f}")
     print('=' * 40)
