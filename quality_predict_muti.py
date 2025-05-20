@@ -10,7 +10,6 @@ from sklearn.metrics import mean_squared_error, r2_score
 import scipy.stats as stats
 from sklearn.svm import SVR
 from sklearn.ensemble import RandomForestRegressor
-from xgboost import XGBRegressor
 
 # 配置参数
 MODEL_CHOICE = 'svr'  # 可选 'svr', 'rf', 'xgb', 'lgb'

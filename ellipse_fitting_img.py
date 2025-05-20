@@ -100,7 +100,7 @@ def is_center_region(x: float, y: float) -> bool:
     width, height = 320, 320
 
     # 计算中心区域边长（面积占50%时，边长为原尺寸的√0.5倍）
-    center_size = int(width * math.sqrt(0.5))  # ≈ 226 像素
+    center_size = int(width * math.sqrt(0.1))  # ≈ 226 像素
     margin = (width - center_size) // 2  # ≈ 47 像素
 
     # 计算中心区域边界
@@ -113,11 +113,11 @@ def is_center_region(x: float, y: float) -> bool:
     return (x_min <= x <= x_max) and (y_min <= y <= y_max)
 
 
-def single_file_predict_online(img, area, output_dir="result_visual"):
+def single_file_predict_online(save_path, area, output_dir="result_visual"):
     """单文件预测函数"""
     # 创建可视化输出目录
     os.makedirs(output_dir, exist_ok=True)
-
+    x, y = 0, 0
     # 初始化结果字典
     result = {
         'status': 'success',
@@ -131,7 +131,7 @@ def single_file_predict_online(img, area, output_dir="result_visual"):
 
     try:
         # 1. 读取并预处理图像
-        mask = cv2.cvtColor(img, cv2.IMREAD_GRAYSCALE)
+        mask = cv2.imread(save_path, cv2.IMREAD_GRAYSCALE)
         if mask is None:
             raise ValueError("无法读取图像文件")
 
@@ -194,7 +194,7 @@ def single_file_predict_online(img, area, output_dir="result_visual"):
         result['status'] = 'error'
         result['message'] = str(e)
         print(e)
-        return result, a, b, ellipse_perimeter(a, b), error, x, y
+        return False, -1, -1, -1, -1, x, y
 
 
 def is_valid_contour(cnt):

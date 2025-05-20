@@ -5,6 +5,9 @@ import tkinter.ttk
 from datetime import datetime
 from tkinter import *
 from tkinter import filedialog
+
+import joblib
+
 from ellipse_fitting_img import single_file_predict as ellipse_fitting
 from ellipse_fitting_img import single_file_predict_online as ellipse_fitting_online
 import cv2
@@ -34,9 +37,12 @@ deeplab = DeeplabV3()
 # 加载模型和标准化器（假设您保存了scaler）
 def load_artifacts(model_path, scaler_path):
     with open(model_path, 'rb') as f_model, open(scaler_path, 'rb') as f_scaler:
-        model = pickle.load(f_model)
-        scaler = pickle.load(f_scaler)
+        model = joblib.load(f_model)
+        scaler = joblib.load(f_scaler)
     return model, scaler
+
+
+model, scaler = load_artifacts(f"./svr_model_pkl/model_svr_seed3.pkl", f"./svr_model_pkl/scaler_svr_seed3.pkl")  # 修改路径
 
 
 def calculate_aspect_ratio(perimeter, area):
@@ -423,8 +429,7 @@ with torch.no_grad():
                 # 转换为OpenCV格式（保存用）
                 save_img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
                 save_img = np.ascontiguousarray(save_img, dtype=np.uint8)
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                filename = f"capture_{timestamp}.jpg"
+                filename = f"capture.jpg"
                 save_path = os.path.join(CAPTURE_DIR, filename)
                 # 保存图像
                 cv2.imwrite(save_path, save_img)
@@ -438,7 +443,7 @@ with torch.no_grad():
                 # 周长,保存标注后的周长掩码
                 # perimeter = hutao_perimeter(save_path)
                 # 计算椭圆a,b
-                result, a, b, perimeter, error, x, y = ellipse_fitting_online(save_img, area_num)
+                result, a, b, perimeter, error, x, y = ellipse_fitting_online(save_path, area_num)
                 if result:
                     # print(f'perimeter={perimeter}')
                     var_perimeter.set(f'{perimeter:.2f}px')
@@ -495,7 +500,6 @@ with torch.no_grad():
                                 arithmetic_a_b_h_avg, geometry_a_b_h_avg, hutao_SI, hutao_ET, hutao_EV, fai,
                                 arithmetic_a_b_avg, geometry_a_b_avg]
 
-                    model, scaler = load_artifacts("model_svr_seed70.pkl", "scaler_svr_seed70.pkl")  # 修改路径
 
                     # 2. 转换输入数据
                     input_data = np.array(FEATURES).reshape(1, -1)
@@ -508,6 +512,7 @@ with torch.no_grad():
 
                     print("标准化后的输入数据:\n", scaled_data)
                     print("\n预测结果:", prediction[0])
+                    var_input.set(str(prediction[0]))
 
                     # 以3g进行分类，但是以2.8克进行结算统计误差
                     if prediction[0] > 3 and class_flag == 1:
@@ -524,6 +529,8 @@ with torch.no_grad():
 
                 else:
                     print(f'核桃仁未到达中心区域x={x},y={y},处理失败')
+                    var_input.set(str(''))
+
             # 每10ms刷新一次（约100fps）
             show_img_1.after(10, update_camera_frame)
 
