@@ -6,6 +6,7 @@ from datetime import datetime
 from tkinter import *
 from tkinter import filedialog
 from ellipse_fitting_img import single_file_predict as ellipse_fitting
+from ellipse_fitting_img import single_file_predict_online as ellipse_fitting_online
 import cv2
 import torch
 from torchvision import transforms
@@ -19,6 +20,7 @@ import json
 from PIL import Image, ImageTk
 from model.deeplab import DeeplabV3
 from perimeter import hutao_perimeter
+import pickle
 
 # 全局背景图片引用
 bg_image = None
@@ -26,6 +28,15 @@ bg_photo = None
 my_class = ["background", "hutao_all", "walnut_half"]
 
 deeplab = DeeplabV3()
+
+
+# 加载保存的SVR模型
+# 加载模型和标准化器（假设您保存了scaler）
+def load_artifacts(model_path, scaler_path):
+    with open(model_path, 'rb') as f_model, open(scaler_path, 'rb') as f_scaler:
+        model = pickle.load(f_model)
+        scaler = pickle.load(f_scaler)
+    return model, scaler
 
 
 def calculate_aspect_ratio(perimeter, area):
@@ -263,7 +274,7 @@ def capture_image():
                 [area_num, perimeter, a, b, a / b, area_num / perimeter, g, error,
                  e, hutao_area, hutao_perimeter, hutao_area_div_hutao_perimeter, hutao_a,
                  hutao_b, hutao_a_div_b, arithmetic_a_b_h_avg, geometry_a_b_h_avg, hutao_SI,
-                 hutao_ET, hutao_EV, fai, filename, hutao_c, arithmetic_a_b_avg,geometry_a_b_avg
+                 hutao_ET, hutao_EV, fai, filename, hutao_c, arithmetic_a_b_avg, geometry_a_b_avg
                  ]
 
             ]
@@ -386,7 +397,9 @@ with torch.no_grad():
                 t1 = time.time()
                 # 进行检测
                 img, text, ratio, class_flag, area_num = deeplab.detect_image(frame, count=True, name_classes=my_class)
+
                 # print(f'检测结果,text={text}\n,ratio={ratio},\n class_flag={class_flag}\n')
+
                 # class_flag：0是背景，1是all,2是half,3是other
                 t2 = time.time()
                 # TODO 检测完成之后开启另外一个线程去显示画面。
@@ -396,18 +409,25 @@ with torch.no_grad():
 
                 # RGBtoBGR满足opencv显示格式
                 frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-                # 转换颜色空间并添加时间戳
                 fps = (fps + (1. / (t2 - t1))) / 2
                 fps = (fps + (1. / (time.time() - t1))) / 2
                 # print("fps= %.2f" % (fps))
-                frame = cv2.putText(frame, "fps= %.2f" % (fps), (0, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                # frame = cv2.putText(frame, "fps= %.2f" % (fps), (0, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                 var.set(f'{my_class[class_flag]}:{ratio:.2f}%')
+                var_area.set(f'{area_num:.2f}px')
 
-                # 动态适配画布尺寸
+                # 动态适配画布尺寸（显示用）
                 img = Image.fromarray(frame)
-                canvas_width = show_img_1.winfo_width()
-                canvas_height = show_img_1.winfo_height()
-                img = img.resize((canvas_width, canvas_height), Image.LANCZOS)
+                img = img.resize((320, 320), Image.LANCZOS)
+
+                # 转换为OpenCV格式（保存用）
+                save_img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+                save_img = np.ascontiguousarray(save_img, dtype=np.uint8)
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"capture_{timestamp}.jpg"
+                save_path = os.path.join(CAPTURE_DIR, filename)
+                # 保存图像
+                cv2.imwrite(save_path, save_img)
 
                 # 更新画布
                 photo = ImageTk.PhotoImage(image=img)
@@ -415,8 +435,97 @@ with torch.no_grad():
                 show_img_1.create_image(0, 0, anchor="nw", image=photo)
                 show_img_1.image = photo  # 保持引用
 
-            # 每25ms刷新一次（约40fps）
-            show_img_1.after(25, update_camera_frame)
+                # 周长,保存标注后的周长掩码
+                # perimeter = hutao_perimeter(save_path)
+                # 计算椭圆a,b
+                result, a, b, perimeter, error, x, y = ellipse_fitting_online(save_img, area_num)
+                if result:
+                    # print(f'perimeter={perimeter}')
+                    var_perimeter.set(f'{perimeter:.2f}px')
+                    circularity = area_num / perimeter
+                    # print(f"面积/周长: {circularity:.2f}")
+
+                    var_circularity.set(f'{circularity:.2f}')
+                    var_aspect_ratio.set(f'A={a:.1f},B={b:.1f},/={a / b:.1f}')
+
+                    # 核桃仁h
+                    h = 0.58
+
+                    # 椭圆e
+                    a, b = max(a, b), min(a, b)  # 自动交换确保a >= b
+                    ratio_squared = (b / a) ** 2
+                    e = math.sqrt(1 - ratio_squared)
+
+                    # 核桃仁标定面积
+                    hutao_area = 0.00068 * area_num
+
+                    # 核桃仁标定周长
+                    hutao_perimeter = perimeter * 0.02596
+
+                    # 拟合椭圆长半轴标定长
+                    hutao_a = a * 0.02596
+
+                    # 拟合椭圆短半轴标定长
+                    hutao_b = b * 0.02596
+
+                    # abh算术平均值
+                    arithmetic_a_b_h_avg = (hutao_a + hutao_b + h) / 3
+
+                    # abh几何平均值
+                    geometry_a_b_h_avg = (hutao_a * hutao_b * h) ** (1 / 3)
+
+                    # 形状索引
+                    hutao_SI = 2 * hutao_a / (h + hutao_b)
+
+                    # 厚度方向的伸长
+                    hutao_ET = hutao_a / h
+
+                    # 垂直方向的伸长
+                    hutao_EV = hutao_b / h
+
+                    # 球形度
+                    fai = (geometry_a_b_h_avg / hutao_a) * 100
+
+                    # ab算术均值
+                    arithmetic_a_b_avg = (hutao_a + hutao_b) / 2
+                    # ab几何均值
+                    geometry_a_b_avg = (hutao_a * hutao_b) ** (1 / 2)
+
+                    FEATURES = [hutao_area, hutao_perimeter, hutao_area / hutao_perimeter, hutao_a, hutao_b,
+                                arithmetic_a_b_h_avg, geometry_a_b_h_avg, hutao_SI, hutao_ET, hutao_EV, fai,
+                                arithmetic_a_b_avg, geometry_a_b_avg]
+
+                    model, scaler = load_artifacts("model_svr_seed70.pkl", "scaler_svr_seed70.pkl")  # 修改路径
+
+                    # 2. 转换输入数据
+                    input_data = np.array(FEATURES).reshape(1, -1)
+
+                    # 3. 标准化处理（关键步骤！）
+                    scaled_data = scaler.transform(input_data)
+
+                    # 4. 预测
+                    prediction = model.predict(scaled_data)
+
+                    print("标准化后的输入数据:\n", scaled_data)
+                    print("\n预测结果:", prediction[0])
+
+                    # 以3g进行分类，但是以2.8克进行结算统计误差
+                    if prediction[0] > 3 and class_flag == 1:
+                        # 大于3g且为1/2仁
+                        pass
+                    elif prediction[0] < 3 and class_flag == 1:
+                        # 小于3g且为1/2仁
+                        pass
+                    else:
+                        # 1/4仁
+                        pass
+
+                # 重置
+
+                else:
+                    print(f'核桃仁未到达中心区域x={x},y={y},处理失败')
+            # 每10ms刷新一次（约100fps）
+            show_img_1.after(10, update_camera_frame)
 
 
     style.theme_use("transparent")
