@@ -454,12 +454,11 @@ with torch.no_grad():
                     var_aspect_ratio.set(f'A={a:.1f},B={b:.1f},/={a / b:.1f}')
 
                     # 核桃仁h
-                    h = 0.58
+                    h = 0.84
 
                     # 椭圆e
                     a, b = max(a, b), min(a, b)  # 自动交换确保a >= b
                     ratio_squared = (b / a) ** 2
-                    e = math.sqrt(1 - ratio_squared)
 
                     # 核桃仁标定面积
                     hutao_area = 0.00068 * area_num
@@ -499,7 +498,6 @@ with torch.no_grad():
                     FEATURES = [hutao_area, hutao_perimeter, hutao_area / hutao_perimeter, hutao_a, hutao_b,
                                 arithmetic_a_b_h_avg, geometry_a_b_h_avg, hutao_SI, hutao_ET, hutao_EV, fai,
                                 arithmetic_a_b_avg, geometry_a_b_avg]
-
 
                     # 2. 转换输入数据
                     input_data = np.array(FEATURES).reshape(1, -1)

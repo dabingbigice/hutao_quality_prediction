@@ -1,0 +1,5 @@
+Average Performance (100 seeds):
+MAE: 0.17
+R²: 0.80
+sum_max_error: 0.94
+sum_max_error_precent: 0.14

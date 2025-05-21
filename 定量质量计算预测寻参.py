@@ -2,8 +2,8 @@ import pandas as pd
 import numpy as np
 
 # 配置参数
-input_file = "核桃仁表型信息.xlsx"   # 输入的Excel文件名
-output_file = "核桃仁表型信息_调试_0.02.xlsx" # 输出的Excel文件名
+input_file = "核桃仁表型信息_重新标定.xlsx"   # 输入的Excel文件名
+output_file = "核桃仁表型信息_重新标定_0.02寻参.xlsx" # 输出的Excel文件名
 sheet_name = "Sheet1"       # 工作表名称
 x_column = "hutao_area"              # x列的名称
 
