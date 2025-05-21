@@ -66,7 +66,7 @@ def plot_scatter(y_true, y_pred, seed, mae, r2, save_dir='rbf_scatters'):
                 edgecolors='red',
                 facecolors='none',
                 s=150,
-                linewidths=2,
+                linewidths=1,
                 label=f'Max Error: {max_error:.2f}')
 
     # 统计信息框

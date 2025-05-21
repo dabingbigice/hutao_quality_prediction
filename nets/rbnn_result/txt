@@ -3,3 +3,22 @@ MAE: 0.17
 R²: 0.80
 sum_max_error: 0.94
 sum_max_error_precent: 0.14
+
+RBF_LAYER_CONFIG = [
+    (128, 0.05),
+]
+
+
+
+
+RBF_LAYER_CONFIG = [
+    (64, 0.05),
+]
+
+Average Performance (100 seeds):
+MAE: 0.17
+R²: 0.78
+sum_max_error: 0.97
+sum_max_error_precent: 0.15
+
+

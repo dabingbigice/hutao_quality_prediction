@@ -9,6 +9,7 @@ from sklearn.metrics import r2_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import DataLoader, Dataset
+import joblib
 
 # ====================== 配置参数 ====================== #
 RANDOM_SEED = 42
@@ -21,6 +22,9 @@ RBF_LAYER_CONFIG = [
     (128, 0.2),  # 第一层：输入特征数->128
     (64, 0.1)  # 第二层：128->64
 ]
+
+
+# (16, 0.02)  # 第二层：128->64
 
 
 class CustomDataset(Dataset):

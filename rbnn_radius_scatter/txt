@@ -3,3 +3,46 @@ MAE: 0.14
 R²: 0.86
 sum_max_error: 0.69
 sum_max_error_precent: 0.10
+
+RBF_LAYER_CONFIG = [
+    (128, 0.05),  # 第一层：输入特征数->128
+    (64, 0.03)  # 第二层：128->64
+]
+
+
+Average
+MAE: 0.15
+R²: 0.86
+sum_max_error: 0.70
+sum_max_error_precent: 0.11
+
+RBF_LAYER_CONFIG = [
+    (64, 0.05),  # 第一层：输入特征数->128
+    (32, 0.03)  # 第二层：128->64
+]
+
+Average
+MAE: 0.15
+R²: 0.85
+sum_max_error: 0.71
+sum_max_error_precent: 0.12
+
+RBF_LAYER_CONFIG = [
+    (128, 0.05),  # 第一层：输入特征数->128
+    (64, 0.03),  # 第二层：128->64
+    (32, 0.01)  # 第二层：128->64
+]
+
+
+
+Average
+MAE: 0.15
+R²: 0.85
+sum_max_error: 0.69
+sum_max_error_precent: 0.11
+
+RBF_LAYER_CONFIG = [
+    (256, 0.05),  # 第一层：输入特征数->128
+    (128, 0.03),  # 第二层：128->64
+
+]
