@@ -18,20 +18,14 @@ from utils.cap_tools import set_cap_config
 import threading
 from excel_data import append_to_excel
 
-thread_flag = True
-
-# 开启多线程
-
-
-# 调用示例
-
 my_class = ["background", "hutao_all", "walnut_half"]
 
 deeplab = DeeplabV3()
 
-
+# 摄像头设置
 CAP_INDEX = f'E:\H 黄#雀 (2025)\\01.mp4'
-CAP1_INDEX = f'E:\H 黄#雀 (2025)\\02.mp4'
+CAP1_INDEX = f'E:\H 黄#雀 (2025)\\001.mp4'
+
 # 加载保存的SVR模型
 # 加载模型和标准化器（假设您保存了scaler）
 model, scaler = load_artifacts(f"./svr_model_pkl/model_svr_seed3.pkl", f"./svr_model_pkl/scaler_svr_seed3.pkl")  # 修改路径
@@ -505,7 +499,7 @@ with torch.no_grad():
 
 
     def open_close_cap_pred():
-        global cap, is_camera_running, current_frame, cap1, is_camera_running1, thread_flag
+        global cap, is_camera_running, current_frame, cap1, is_camera_running1
         if not is_camera_running:
             # 初始化摄像头
             cap = cv2.VideoCapture(CAP_INDEX)
@@ -516,8 +510,7 @@ with torch.no_grad():
 
             is_camera_running = True
             is_camera_running1 = True
-            # if thread_flag:
-            #     thread_flag = False
+
             thread_object, ident, native_id = start_camera_thread(cap, show_img_1, is_camera_running, 'cap.jpg')
             thread_object, ident, native_id = start_camera_thread(cap1, show_img_2, is_camera_running1, 'cap_1.jpg')
             # update_camera_frame(cap, show_img_1, is_camera_running, 'cap.jpg')  # 开始更新画面
@@ -538,7 +531,7 @@ with torch.no_grad():
             ret1, frame1 = cap_invoke.read()
             if ret1:
                 img_process(frame1, show_img, filename, str(filename))
-            time.sleep(0.02)
+            time.sleep(0.005)
         # 每10ms刷新一次（约100fps）
         # show_img.after(250, update_camera_frame, cap_invoke, show_img, is_camera_running_invoke, filename)
         # 停止启动
