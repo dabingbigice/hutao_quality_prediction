@@ -469,7 +469,6 @@ with torch.no_grad():
             # 4. 预测
             prediction = model.predict(scaled_data)
 
-            print("标准化后的输入数据:\n", scaled_data)
             print("\n预测结果:", prediction[0])
 
             if current_cam_index == 'cap.jpg':
