@@ -527,7 +527,7 @@ with torch.no_grad():
                 img_process(frame1, show_img, filename, str(filename))
 
         # 每10ms刷新一次（约100fps）
-        show_img.after(150, update_camera_frame, cap_invoke, show_img, is_camera_running_invoke, filename)
+        show_img.after(250, update_camera_frame, cap_invoke, show_img, is_camera_running_invoke, filename)
         # 停止启动
 
 
