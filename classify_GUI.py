@@ -1,58 +1,74 @@
 import math
 import os
 import time
-import tkinter.ttk
 from datetime import datetime
 from tkinter import *
-from tkinter import filedialog
 from utils.gui_tools import set_background
-import numpy as np
 from ellipse_fitting_img import single_file_predict as ellipse_fitting
 from ellipse_fitting_img import single_file_predict_online as ellipse_fitting_online
 import cv2
 import torch
-from torchvision import transforms
-import pandas as pd
-from torchvision import models
 import numpy as np
 from PIL import Image, ImageTk, ImageDraw, ImageFont
 import tkinter.font as tkFont
 from tkinter import ttk
-import json
 from model.deeplab import DeeplabV3
-from perimeter import hutao_perimeter
-import pickle
 from utils.util_tools import load_artifacts
-from utils.elipse_tools import calculate_aspect_ratio, ellipse_perimeter
 from utils.cap_tools import set_cap_config
+import threading
+from excel_data import append_to_excel
+
+thread_flag = True
+
+# 开启多线程
+
+
+# 调用示例
 
 my_class = ["background", "hutao_all", "walnut_half"]
 
 deeplab = DeeplabV3()
 
+
 CAP_INDEX = f'E:\H 黄#雀 (2025)\\01.mp4'
 CAP1_INDEX = f'E:\H 黄#雀 (2025)\\02.mp4'
 # 加载保存的SVR模型
 # 加载模型和标准化器（假设您保存了scaler）
-
-
 model, scaler = load_artifacts(f"./svr_model_pkl/model_svr_seed3.pkl", f"./svr_model_pkl/scaler_svr_seed3.pkl")  # 修改路径
-
 # 在全局变量区域新增
 CAPTURE_DIR = os.path.join('F:', "captured_images")  # 存储目录
 os.makedirs(CAPTURE_DIR, exist_ok=True)  # 自动创建目录
-
 is_cap = False
-from excel_data import append_to_excel
-
+# 在全局变量区域新增
+cap = None  # 摄像头对象
+is_camera_running = False  # 摄像头状态标志
+is_camera_running1 = False  # 摄像头状态标志
+current_frame = None  # 当前帧缓存
 save_dir_captured_orign = "captured_orign_photos"
-import os
-
 # 添加目录存在性检查（自动创建缺失目录）
 os.makedirs(CAPTURE_DIR, exist_ok=True)
 
 
 # 图像处理
+def start_camera_thread(cap, canvas, is_running_flag, filename):
+    """启动摄像头更新线程并返回线程ID"""
+    # 创建线程对象
+    thread = threading.Thread(
+        target=update_camera_frame,
+        args=(cap, canvas, is_running_flag, filename),
+        name=str(filename),  # 可选：设置线程名称
+        daemon=True
+    )
+
+    # 启动线程
+    thread.start()
+
+    # 返回线程ID（Python标识符和原生ID）
+    return {
+        "thread_object": thread,
+        "ident": thread.ident,
+        "native_id": thread.native_id
+    }
 
 
 # 新增拍照功能,用于提取表型信息
@@ -228,12 +244,6 @@ def capture_image():
         var.set(f"已保存：{filename}")
 
 
-# 在全局变量区域新增
-cap = None  # 摄像头对象
-is_camera_running = False  # 摄像头状态标志
-is_camera_running1 = False  # 摄像头状态标志
-current_frame = None  # 当前帧缓存
-
 with torch.no_grad():
     net_list = {'GhostLab*': deeplab,
                 # 'resnet50': models.resnet50(pretrained=True),
@@ -383,7 +393,6 @@ with torch.no_grad():
         print("fps= %.2f" % (fps))
         # frame = cv2.putText(frame, "fps= %.2f" % (fps), (0, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-
         # 动态适配画布尺寸（显示用）
         img = Image.fromarray(frame)
         img = img.resize((320, 320), Image.LANCZOS)
@@ -496,7 +505,7 @@ with torch.no_grad():
 
 
     def open_close_cap_pred():
-        global cap, is_camera_running, current_frame, cap1, is_camera_running1
+        global cap, is_camera_running, current_frame, cap1, is_camera_running1, thread_flag
         if not is_camera_running:
             # 初始化摄像头
             cap = cv2.VideoCapture(CAP_INDEX)
@@ -507,8 +516,12 @@ with torch.no_grad():
 
             is_camera_running = True
             is_camera_running1 = True
-            update_camera_frame(cap, show_img_1, is_camera_running, 'cap.jpg')  # 开始更新画面
-            update_camera_frame(cap1, show_img_2, is_camera_running1, 'cap_1.jpg')  # 开始更新画面
+            # if thread_flag:
+            #     thread_flag = False
+            thread_object, ident, native_id = start_camera_thread(cap, show_img_1, is_camera_running, 'cap.jpg')
+            thread_object, ident, native_id = start_camera_thread(cap1, show_img_2, is_camera_running1, 'cap_1.jpg')
+            # update_camera_frame(cap, show_img_1, is_camera_running, 'cap.jpg')  # 开始更新画面
+            # update_camera_frame(cap1, show_img_2, is_camera_running1, 'cap_1.jpg')  # 开始更新画面
         else:
             # 关闭摄像头
             cap.release()
@@ -521,14 +534,16 @@ with torch.no_grad():
 
     def update_camera_frame(cap_invoke, show_img, is_camera_running_invoke, filename):
         global current_frame
-        if is_camera_running_invoke:
+        while is_camera_running_invoke:
             ret1, frame1 = cap_invoke.read()
             if ret1:
                 img_process(frame1, show_img, filename, str(filename))
-
+            time.sleep(0.02)
         # 每10ms刷新一次（约100fps）
-        show_img.after(250, update_camera_frame, cap_invoke, show_img, is_camera_running_invoke, filename)
+        # show_img.after(250, update_camera_frame, cap_invoke, show_img, is_camera_running_invoke, filename)
         # 停止启动
+        cap_invoke.release()
+        show_img.delete("all")  # 清空画布
 
 
     open_img = Button(root, command=open_close_cap_pred, font=open_Style)
