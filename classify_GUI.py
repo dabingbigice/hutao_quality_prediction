@@ -30,8 +30,8 @@ my_class = ["background", "hutao_all", "walnut_half"]
 
 deeplab = DeeplabV3()
 
-CAP_INDEX=f'E:\H 黄#雀 (2025)\\01.mp4'
-CAP1_INDEX=f'E:\H 黄#雀 (2025)\\02.mp4'
+CAP_INDEX = f'E:\H 黄#雀 (2025)\\01.mp4'
+CAP1_INDEX = f'E:\H 黄#雀 (2025)\\02.mp4'
 # 加载保存的SVR模型
 # 加载模型和标准化器（假设您保存了scaler）
 
@@ -382,8 +382,7 @@ with torch.no_grad():
         fps = (fps + (1. / (time.time() - t1))) / 2
         print("fps= %.2f" % (fps))
         # frame = cv2.putText(frame, "fps= %.2f" % (fps), (0, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-        var.set(f'{my_class[class_flag]}:{ratio:.2f}%')
-        var_area.set(f'{area_num:.2f}px')
+
 
         # 动态适配画布尺寸（显示用）
         img = Image.fromarray(frame)
@@ -403,17 +402,18 @@ with torch.no_grad():
         show_img.delete("all")
         show_img.create_image(0, 0, anchor="nw", image=photo)
         show_img.image = photo  # 保持引用
+        # 输入框显示
+        if current_cam_index == 'cap.jpg':
+            var.set(f'{my_class[class_flag]}:{ratio:.2f}%')
+            var_area.set(f'{area_num:.2f}px')
 
         # 计算椭圆a, b, perimeter, error, x, y
         result, a, b, perimeter, error, x, y = ellipse_fitting_online(save_path, area_num)
         if result:
             # print(f'perimeter={perimeter}')
-            var_perimeter.set(f'{perimeter:.2f}px')
+
             circularity = area_num / perimeter
             # print(f"面积/周长: {circularity:.2f}")
-
-            var_circularity.set(f'{circularity:.2f}')
-            var_aspect_ratio.set(f'A={a:.1f},B={b:.1f},/={a / b:.1f}')
 
             # 核桃仁h
             h = 0.84
@@ -471,7 +471,13 @@ with torch.no_grad():
 
             print("标准化后的输入数据:\n", scaled_data)
             print("\n预测结果:", prediction[0])
-            var_input.set(str(prediction[0]))
+
+            if current_cam_index == 'cap.jpg':
+                var_perimeter.set(f'{perimeter:.2f}px')
+                var_circularity.set(f'{circularity:.2f}')
+                var_aspect_ratio.set(f'A={a:.1f},B={b:.1f},/={a / b:.1f}')
+                var_input.set(str(prediction[0]))
+
             # 以3g进行分类，但是以2.8克进行结算统计误差
             if prediction[0] > 3 and class_flag == 1:
                 # 大于3g且为1/2仁
@@ -486,7 +492,8 @@ with torch.no_grad():
 
         else:
             print(f'cap={current_cam_index},核桃仁未到达中心区域x={x},y={y},处理失败')
-            var_input.set(str(''))
+            if current_cam_index == 'cap.jpg':
+                var_input.set(str(''))
 
 
     def open_close_cap_pred():
