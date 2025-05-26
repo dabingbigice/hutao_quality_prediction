@@ -17,10 +17,13 @@ from utils.util_tools import load_artifacts
 from utils.cap_tools import set_cap_config
 import threading
 from excel_data import append_to_excel
+from utils.msg_send import stm32Serial
 
 my_class = ["background", "hutao_all", "walnut_half"]
 
 deeplab = DeeplabV3()
+
+port = 'COM7'
 
 # 摄像头设置
 CAP_INDEX = f'H:\\01.mp4'
@@ -39,6 +42,7 @@ is_camera_running = False  # 摄像头状态标志
 is_camera_running1 = False  # 摄像头状态标志
 current_frame = None  # 当前帧缓存
 save_dir_captured_orign = "captured_orign_photos"
+ser_common = None
 # 添加目录存在性检查（自动创建缺失目录）
 os.makedirs(CAPTURE_DIR, exist_ok=True)
 
@@ -485,9 +489,11 @@ with torch.no_grad():
             # 以3g进行分类，但是以2.8克进行结算统计误差
             if prediction[0] > 3 and class_flag == 1:
                 # 大于3g且为1/2仁
+                stm32Serial.send_to_stm32(message=str(0))
                 pass
             elif prediction[0] < 3 and class_flag == 1:
                 # 小于3g且为1/2仁
+                stm32Serial.send_to_stm32(message=str(2))
                 pass
             else:
                 # 1/4仁
@@ -501,7 +507,8 @@ with torch.no_grad():
 
 
     def open_close_cap_pred():
-        global cap, is_camera_running, current_frame, cap1, is_camera_running1
+        global cap, is_camera_running, current_frame, cap1, is_camera_running1, ser_common
+        ser_common = stm32Serial(port=port, baudrate=9600)
         if not is_camera_running:
             # 初始化摄像头
             cap = cv2.VideoCapture(CAP_INDEX)
@@ -512,6 +519,8 @@ with torch.no_grad():
 
             is_camera_running = True
             is_camera_running1 = True
+
+            # 初始化串口
 
             thread_object, ident, native_id = start_camera_thread(cap, show_img_1, is_camera_running, 'cap.jpg')
             thread_object, ident, native_id = start_camera_thread(cap1, show_img_2, is_camera_running1, 'cap_1.jpg')
@@ -525,24 +534,25 @@ with torch.no_grad():
             is_camera_running1 = False
             show_img_1.delete("all")  # 清空画布
             show_img_2.delete("all")  # 清空画布
+            ser_common.close_serial()  # 关闭串口
 
 
-    def update_camera_frame(cap_invoke, show_img, is_camera_running_invoke, filename):
-        global current_frame
-        while is_camera_running_invoke:
-            ret1, frame1 = cap_invoke.read()
-            if ret1:
-                img_process(frame1, show_img, filename, str(filename))
-            # time.sleep(0.005)
-        # 每10ms刷新一次（约100fps）
-        # show_img.after(250, update_camera_frame, cap_invoke, show_img, is_camera_running_invoke, filename)
-        # 停止启动
-        cap_invoke.release()
-        show_img.delete("all")  # 清空画布
+def update_camera_frame(cap_invoke, show_img, is_camera_running_invoke, filename):
+    global current_frame
+    while is_camera_running_invoke:
+        ret1, frame1 = cap_invoke.read()
+        if ret1:
+            img_process(frame1, show_img, filename, str(filename))
+        # time.sleep(0.005)
+    # 每10ms刷新一次（约100fps）
+    # show_img.after(250, update_camera_frame, cap_invoke, show_img, is_camera_running_invoke, filename)
+    # 停止启动
+    cap_invoke.release()
+    show_img.delete("all")  # 清空画布
 
 
-    open_img = Button(root, command=open_close_cap_pred, font=open_Style)
-    open_img.place(relx=0.85, rely=0.6, anchor='nw', relwidth=1 / 8, relheight=1 / 12)
-    # 修改原"选择图片"按钮为摄像头开关
-    open_img.config(text='启动/停止', command=open_close_cap_pred)
-    root.mainloop()
+open_img = Button(root, command=open_close_cap_pred, font=open_Style)
+open_img.place(relx=0.85, rely=0.6, anchor='nw', relwidth=1 / 8, relheight=1 / 12)
+# 修改原"选择图片"按钮为摄像头开关
+open_img.config(text='启动/停止', command=open_close_cap_pred)
+root.mainloop()
