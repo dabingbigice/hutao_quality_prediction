@@ -14,11 +14,11 @@ from torch.utils.data import Dataset, DataLoader
 RANDOM_SEED = 42
 BATCH_SIZE = 32
 NUM_EPOCHS = 200
-LEARNING_RATE = 0.005
+LEARNING_RATE = 0.001
 TEST_SIZE = 0.2
 
 RBF_LAYER_CONFIG = [
-    (128, 0.2),
+    (64, 0.05),
 ]
 
 
@@ -44,10 +44,33 @@ def plot_scatter(y_true, y_pred, seed, mae, r2, save_dir='rbf_scatters'):
     y_pred = np.array(y_pred)
 
     errors = np.abs(y_true - y_pred)
-    max_error = np.max(errors)
-    max_idx = np.argmax(errors)
+    plt.figure(figsize=(12, 7))
+    ax = plt.gca()
+    max_error = errors.max()
+    max_idx = errors.argmax()
+    max_actual = y_true[max_idx]
+    max_predicted = y_pred[max_idx]
+    # 标注最大误差点
+    ax.scatter(
+        max_actual, max_predicted,
+        color='red',
+        s=150,
+        edgecolor='black',
+        zorder=4,
+        label=f'Max Error: {max_error:.2f}g'
+    )
 
-    plt.figure(figsize=(10, 8))
+    # 添加误差注释
+    ax.annotate(
+        f'Actual: {max_actual:.2f}g\nPred: {max_predicted:.2f}g',
+        xy=(max_actual, max_predicted),
+        xytext=(max_actual+0.2,
+                max_predicted+0.2),
+        arrowprops=dict(arrowstyle='->', color='black', lw=1),
+        fontsize=10,
+        ha='left'
+    )
+
     scatter = plt.scatter(y_true, y_pred,
                           c=errors,
                           cmap='viridis',
@@ -87,8 +110,9 @@ def plot_scatter(y_true, y_pred, seed, mae, r2, save_dir='rbf_scatters'):
     # 标签和标题
     plt.xlabel('Actual Values', fontsize=12)
     plt.ylabel('Predicted Values', fontsize=12)
-    plt.title(f'RBF Network Predictions (Seed: {seed})\n count:{count} | precent={count / len(errors):.2f}',
-              fontsize=14)
+    plt.title(
+        f'RBF Network Predictions (Seed: {seed})\n errors > 0.3_count:{count} | precent={count / len(errors):.2f}',
+        fontsize=14)
     plt.grid(True, alpha=0.3, linestyle=':')
 
     # 保存文件
@@ -98,7 +122,7 @@ def plot_scatter(y_true, y_pred, seed, mae, r2, save_dir='rbf_scatters'):
         bbox_inches='tight'
     )
     plt.show()
-    plt.close()
+    return max_error, count / len(errors)
 
 
 # ====================== RBF模型定义 ====================== #
@@ -144,7 +168,8 @@ def train():
     sum_test_mae = 0
     sum_test_r2 = 0
     all_metrics = []
-
+    sum_max_error = 0
+    sum_max_error_precent = 0
     for RANDOM_SEED in range(100):
         # 设置随机种子
         torch.manual_seed(RANDOM_SEED)
@@ -240,20 +265,24 @@ def train():
         all_metrics.append((mae, r2))
 
         # 绘制散点图
-        plot_scatter(y_true, y_pred, RANDOM_SEED, mae, r2)
-        os.makedirs('rbnn', exist_ok=True)  # 新增目录创建
+        max_error, precent = plot_scatter(y_true, y_pred, RANDOM_SEED, mae, r2)
+        sum_max_error += max_error
+        sum_max_error_precent += precent
+        os.makedirs('rbnn_result/rbnn', exist_ok=True)  # 新增目录创建
         # 保存模型
         torch.save({
             'model': model.state_dict(),
             'scaler': scaler,
             'config': RBF_LAYER_CONFIG,
             'features': FEATURES
-        }, f'rbnn/seed_{RANDOM_SEED}.pth')
-        print('训练结束')
+        }, f'rbnn_result/rbnn/seed_{RANDOM_SEED}.pth')
+        print(f'训练结束_RANDOM_SEED_{RANDOM_SEED}')
     # 输出最终统计结果
     print(f"\nAverage Performance (100 seeds):")
-    print(f"MAE: {sum_test_mae / 100:.4f}")
-    print(f"R²: {sum_test_r2 / 100:.4f}")
+    print(f"MAE: {sum_test_mae / 100:.2f}")
+    print(f"R²: {sum_test_r2 / 100:.2f}")
+    print(f"sum_max_error: {sum_max_error / 100:.2f}")
+    print(f"sum_max_error_precent: {sum_max_error_precent / 100:.2f}")
 
 
 if __name__ == '__main__':

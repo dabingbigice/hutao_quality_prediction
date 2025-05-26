@@ -19,8 +19,8 @@ LEARNING_RATE = 0.005
 TEST_SIZE = 0.2
 
 RBF_LAYER_CONFIG = [
-    (128, 0.2),  # 第一层：输入特征数->128
-    (64, 0.1)  # 第二层：128->64
+    (128, 0.05),  # 第一层：输入特征数->128
+    (64, 0.03)  # 第二层：128->64
 ]
 
 
@@ -39,43 +39,89 @@ class CustomDataset(Dataset):
         return self.X[idx], self.y[idx]
 
 
-def plot_scatter(y_true, y_pred, seed, mae, r2, save_dir='scatter_plots/rbnn_radius'):
+def plot_scatter(y_true, y_pred, seed, mae, r2, save_dir='rbnn_radius_scatter/rbnn_radius'):
     os.makedirs(save_dir, exist_ok=True)
     errors = np.abs(y_true - y_pred)
-    max_error = np.max(errors)
-    max_idx = np.argmax(errors)
 
-    plt.figure(figsize=(10, 8))
-    scatter = plt.scatter(y_true, y_pred, c=errors, cmap='viridis', alpha=0.7,
-                          edgecolors='w', s=50, vmin=0, vmax=np.percentile(errors, 95))
+    plt.figure(figsize=(12, 7))
+    ax = plt.gca()
+    max_error = errors.max()
+    max_idx = errors.argmax()
+    max_actual = y_true[max_idx]
+    max_predicted = y_pred[max_idx]
+    # 标注最大误差点
+    ax.scatter(
+        max_actual, max_predicted,
+        color='red',
+        s=150,
+        edgecolor='black',
+        zorder=4,
+        label=f'Max Error: {max_error:.2f}g'
+    )
 
-    # 理想线
+    # 添加误差注释
+    ax.annotate(
+        f'Actual: {max_actual:.2f}g\nPred: {max_predicted:.2f}g',
+        xy=(max_actual, max_predicted),
+        xytext=(max_actual + 0.15,
+                max_predicted + 0.15),
+        arrowprops=dict(arrowstyle='->', color='black', lw=1),
+        fontsize=10,
+        ha='left'
+    )
+
+    scatter = plt.scatter(y_true, y_pred,
+                          c=errors,
+                          cmap='viridis',
+                          alpha=0.7,
+                          edgecolors='w',
+                          s=60,
+                          vmin=0,
+                          vmax=np.percentile(errors, 95))
+
+    # 理想参考线
     lims = [min(y_true.min(), y_pred.min()), max(y_true.max(), y_pred.max())]
     plt.plot(lims, lims, 'r--', lw=2, alpha=0.7)
 
-    # 最大误差点
+    # 标注最大误差点
     plt.scatter(y_true[max_idx], y_pred[max_idx],
-                edgecolors='red', facecolors='none', s=150,
-                linewidths=2, label=f'Max Error: {max_error:.2f}')
+                edgecolors='red',
+                facecolors='none',
+                s=150,
+                linewidths=2,
+                label=f'Max Error: {max_error:.2f}')
 
-    # 统计信息
-    stats_text = (f'Seed: {seed}\nMAE: {mae:.2f}\nR²: {r2:.2f}\nMax Error: {max_error:.2f}')
-    plt.text(0.05, 0.85, stats_text, transform=plt.gca().transAxes,
-             fontsize=12, bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+    # 统计信息框
+    stats_text = (f'Seed: {seed}\n'
+                  f'MAE: {mae:.2f}\n'
+                  f'R²: {r2:.2f}\n'
+                  f'Max Error: {max_error:.2f}')
+    plt.text(0.05, 0.85, stats_text,
+             transform=plt.gca().transAxes,
+             fontsize=12,
+             bbox=dict(facecolor='white', alpha=0.8))
 
     # 颜色条
     cbar = plt.colorbar(scatter)
     cbar.set_label('Absolute Error', rotation=270, labelpad=15)
     count = (errors > 0.3).sum()
+
     # 标签和标题
-    plt.xlabel('True Values', fontsize=12)
+    plt.xlabel('Actual Values', fontsize=12)
     plt.ylabel('Predicted Values', fontsize=12)
-    count = (errors > 0.3).sum()
-    plt.title(f'Model Predictions (Seed: {seed})\n count:{count},precent={count / len(errors):.2f}', fontsize=14)
+    plt.title(
+        f'RBF_residual Network Predictions (Seed: {seed})\n errors > 0.3_count:{count} | precent={count / len(errors):.2f}',
+        fontsize=14)
     plt.grid(True, alpha=0.3, linestyle=':')
-    plt.tight_layout()
-    plt.savefig(os.path.join(save_dir, f'scatter_seed_{seed}.png'), dpi=150)
-    plt.close()
+
+    # 保存文件
+    plt.savefig(
+        os.path.join(save_dir, f'seed_{seed}_R2_{r2:.2f}_MAE_{mae:.2f}.png'),
+        dpi=150,
+        bbox_inches='tight'
+    )
+    plt.show()
+    return max_error, count / len(errors)
 
 
 # ====================== 模型定义 ====================== #
@@ -111,7 +157,7 @@ class RBFNN(nn.Module):
             prev_dim = units
         self.output = nn.Sequential(
             nn.Linear(prev_dim, 64),
-            nn.ReLU(),
+            nn.GELU(),
             nn.Linear(64, 1)
         )
 

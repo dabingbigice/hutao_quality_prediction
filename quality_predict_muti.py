@@ -22,7 +22,7 @@ MODEL_NAMES = {
 
 def main(RANDOM_STATE):
     # 数据配置
-    DATA_PATH = '核桃仁表型信息_重新标定.xlsx'
+    DATA_PATH = '核桃仁表型信息_重新标定_h_0.84.xlsx'
     TEST_SIZE = 0.2
     FEATURES = ['hutao_area', 'hutao_perimeter', 'hutao_area/hutao_perimeter', 'hutao_a', 'hutao_b',
                 'arithmetic_a_b_h_avg', 'geometry_a_b_h_avg', 'hutao_SI', 'hutao_ET', 'hutao_EV', 'fai',
@@ -70,16 +70,7 @@ def main(RANDOM_STATE):
             },
             'n_iter': 30
         },
-        'xgb': {
-            'model': XGBRegressor(objective='reg:squarederror'),
-            'params': {
-                'learning_rate': stats.loguniform(0.01, 0.3),
-                'n_estimators': stats.randint(100, 500),
-                'max_depth': stats.randint(3, 8),
-                'subsample': stats.uniform(0.6, 0.4)
-            },
-            'n_iter': 30
-        }
+
     }
 
     # 模型初始化
