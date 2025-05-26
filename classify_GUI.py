@@ -108,8 +108,8 @@ def load_artifacts(model_path, scaler_path):
     return model, scaler
 
 
-model_pre, scaler = load_artifacts(f"./rbnn_radius_scatter/saved_models/seed_93/model_seed_93.pth",
-                               f"./rbnn_radius_scatter/saved_models/seed_93/scaler_seed_93.pkl")  # 修改路径
+model_pre, scaler = load_artifacts(f"./rbnn_radius_scatter/seed_93/model_seed_93.pth",
+                                   f"./rbnn_radius_scatter/seed_93/scaler_seed_93.pkl")  # 修改路径
 
 
 # 多线程图像处理
@@ -233,7 +233,7 @@ def capture_image():
             g = float(value) / 100  # 转换为浮点数
 
             # 核桃仁h
-            h = 0.58
+            h = 0.84
 
             # 椭圆e
             a, b = max(a, b), min(a, b)  # 自动交换确保a >= b
@@ -310,6 +310,137 @@ def capture_image():
         var.set(f"已保存：{filename}")
 
 
+def img_hutao_test():
+    frame = cv2.imread('img/1.jpg')
+    frame = cv2.resize(frame, (320, 320))
+    # 格式转变，BGRtoRGB
+    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    # 转变成Image
+    frame = Image.fromarray(np.uint8(frame))
+    t1 = time.time()
+    # 进行检测
+    img, text, ratio, class_flag, area_num = deeplab.detect_image(frame, count=True, name_classes=my_class)
+
+    # print(f'检测结果,text={text}\n,ratio={ratio},\n class_flag={class_flag}\n')
+
+    # class_flag：0是背景，1是all,2是half,3是other
+    t2 = time.time()
+    # TODO 检测完成之后开启另外一个线程去显示画面。
+    delta_ms = (t2 - t1) * 1000
+    # print(f"deeplab.detect_image检测速度: {delta_ms:.3f} 毫秒")
+    frame = np.array(img)
+
+    # RGBtoBGR满足opencv显示格式
+    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+
+    # print("fps= %.2f" % (fps))
+    # frame = cv2.putText(frame, "fps= %.2f" % (fps), (0, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+    var.set(f'{my_class[class_flag]}:{ratio:.2f}%')
+    var_area.set(f'{area_num:.2f}px')
+
+    # 动态适配画布尺寸（显示用）
+    img = Image.fromarray(frame)
+    img = img.resize((320, 320), Image.LANCZOS)
+
+    # 转换为OpenCV格式（保存用）
+    save_img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+    save_img = np.ascontiguousarray(save_img, dtype=np.uint8)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"capture_{timestamp}.jpg"
+    save_path = os.path.join(CAPTURE_DIR, filename)
+    # 保存图像
+    cv2.imwrite(save_path, save_img)
+
+    # 更新画布
+    photo = ImageTk.PhotoImage(image=img)
+    show_img_1.delete("all")
+    show_img_1.create_image(0, 0, anchor="nw", image=photo)
+    show_img_1.image = photo  # 保持引用
+
+    # 周长,保存标注后的周长掩码
+    # perimeter = hutao_perimeter(save_path)
+    # 计算椭圆a,b
+    _, a, b, perimeter, error = ellipse_fitting(save_path, area_num)
+
+    # print(f'perimeter={perimeter}')
+    var_perimeter.set(f'{perimeter:.2f}px')
+    circularity = area_num / perimeter
+    # print(f"面积/周长: {circularity:.2f}")
+
+    var_circularity.set(f'{circularity:.2f}')
+    var_aspect_ratio.set(f'A={a:.1f},B={b:.1f},/={a / b:.1f}')
+
+    circularity = area_num / perimeter
+    # print(f"面积/周长: {circularity:.2f}")
+
+    # 核桃仁h
+    h = 0.84
+
+    # 椭圆e
+    a, b = max(a, b), min(a, b)  # 自动交换确保a >= b
+
+    # 核桃仁标定面积
+    hutao_area = 0.00068 * area_num
+
+    # 核桃仁标定周长
+    hutao_perimeter = perimeter * 0.02596
+
+    # 拟合椭圆长半轴标定长
+    hutao_a = a * 0.02596
+
+    # 拟合椭圆短半轴标定长
+    hutao_b = b * 0.02596
+
+    # abh算术平均值
+    arithmetic_a_b_h_avg = (hutao_a + hutao_b + h) / 3
+
+    # abh几何平均值
+    geometry_a_b_h_avg = (hutao_a * hutao_b * h) ** (1 / 3)
+
+    # 形状索引
+    hutao_SI = 2 * hutao_a / (h + hutao_b)
+
+    # 厚度方向的伸长
+    hutao_ET = hutao_a / h
+
+    # 垂直方向的伸长
+    hutao_EV = hutao_b / h
+
+    # 球形度
+    fai = (geometry_a_b_h_avg / hutao_a) * 100
+
+    # ab算术均值
+    arithmetic_a_b_avg = (hutao_a + hutao_b) / 2
+    # ab几何均值
+    geometry_a_b_avg = (hutao_a * hutao_b) ** (1 / 2)
+
+    FEATURES = [hutao_area, hutao_perimeter, hutao_area / hutao_perimeter, hutao_a, hutao_b,
+                arithmetic_a_b_h_avg, geometry_a_b_h_avg, hutao_SI, hutao_ET, hutao_EV, fai,
+                arithmetic_a_b_avg, geometry_a_b_avg]
+    # 2. 转换输入数据
+    # input_data = np.array(FEATURES).reshape(1, -1)
+    # 2. 转换输入数据
+    input_data = np.array(FEATURES).reshape(1, -1).astype(np.float32)  # 确保是数值数组
+
+    # 3. 标准化处理（关键步骤！）
+    scaled_data = scaler.transform(input_data)
+
+    # 4. 转换为 PyTorch Tensor
+    input_tensor = torch.from_numpy(scaled_data).to(device)  # device 需要与模型一致
+
+    # 3. 标准化处理（关键步骤！）
+    # scaled_data = scaler.transform(input_data)
+
+    # 4. 预测
+    with torch.no_grad():
+        t1 = time.time()
+        prediction = model_pre(input_tensor).to(device)
+        t2 = time.time()
+        print(f'prediction_model耗时:{(t2 - t1) * 1000:.2f}ms')
+
+    print(f"预测结果: {prediction.item():.2f}g")
+
+
 with torch.no_grad():
     def update_camera_frame(cap_invoke, show_img, is_camera_running_invoke, filename):
         global current_frame
@@ -359,7 +490,7 @@ with torch.no_grad():
         save_img = np.ascontiguousarray(save_img, dtype=np.uint8)
         save_path = os.path.join(CAPTURE_DIR, filename)
         # 保存图像
-        cv2.imwrite(save_path, save_img)
+        flag = cv2.imwrite(save_path, save_img)
         # 更新画布
 
         photo = ImageTk.PhotoImage(image=img)
