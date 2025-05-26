@@ -99,7 +99,7 @@ class RBFNN(nn.Module):
 def load_artifacts(model_path, scaler_path):
 
     # 加载模型
-    checkpoint = torch.load(model_path, map_location='cuda')  # 即使原模型在GPU上，映射到CPU
+    checkpoint = torch.load(model_path, map_location=device)  # 即使原模型在GPU上，映射到CPU
     model = checkpoint['model']
     model.eval()  # 切换到评估模式
 
@@ -439,6 +439,7 @@ def img_hutao_test():
         print(f'prediction_model耗时:{(t2 - t1) * 1000:.2f}ms')
 
     print(f"预测结果: {prediction.item():.2f}g")
+    var_input.set(f'{prediction.item():.2f}')
 
 
 with torch.no_grad():
