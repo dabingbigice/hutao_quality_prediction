@@ -23,8 +23,8 @@ my_class = ["background", "hutao_all", "walnut_half"]
 deeplab = DeeplabV3()
 
 # 摄像头设置
-CAP_INDEX = f'E:\H 黄#雀 (2025)\\01.mp4'
-CAP1_INDEX = f'E:\H 黄#雀 (2025)\\001.mp4'
+CAP_INDEX = f'H:\\01.mp4'
+CAP1_INDEX = f'H:\\001.mp4'
 
 # 加载保存的SVR模型
 # 加载模型和标准化器（假设您保存了scaler）
@@ -365,26 +365,28 @@ with torch.no_grad():
     def img_process(frame, show_img, filename, current_cam_index):
 
         fps = 0.0
-        t1 = time.time()
         frame = cv2.resize(frame, (320, 320))
         # 格式转变，BGRtoRGB
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         # 转变成Image
         frame = Image.fromarray(np.uint8(frame))
         # 进行检测
+        t1 = time.time()
         img, text, ratio, class_flag, area_num = deeplab.detect_image(frame, count=True, name_classes=my_class)
         # print(f'检测结果,text={text}\n,ratio={ratio},\n class_flag={class_flag}\n')
+        t2 = time.time()
+        delta_ms = (t2 - t1) * 1000
+        print(f"\nfps={1000 / delta_ms:.3f} 毫秒")
 
         # class_flag：0是背景，1是all,2是half,3是other
-        t2 = time.time()
         # print(f"deeplab.detect_image检测速度: {delta_ms:.3f} 毫秒")
         frame = np.array(img)
 
         # RGBtoBGR满足opencv显示格式
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-        fps = (fps + (1. / (t2 - t1))) / 2
-        fps = (fps + (1. / (time.time() - t1))) / 2
-        print("fps= %.2f" % (fps))
+        # fps = (fps + (1. / (t2 - t1))) / 2
+        # fps = (fps + (1. / (time.time() - t1))) / 2
+        # print("fps= %.2f" % (fps))
         # frame = cv2.putText(frame, "fps= %.2f" % (fps), (0, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
         # 动态适配画布尺寸（显示用）
@@ -392,7 +394,7 @@ with torch.no_grad():
         img = img.resize((320, 320), Image.LANCZOS)
         draw = ImageDraw.Draw(img)
         font = ImageFont.truetype("arial.ttf", 20)
-        draw.text((10, 10), f"FPS: {fps:.1f}", font=font, fill=(255, 0, 0))
+        draw.text((10, 10), f"FPS: {1000 / delta_ms:.1f}", font=font, fill=(255, 0, 0))
 
         # 转换为OpenCV格式（保存用）
         save_img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
