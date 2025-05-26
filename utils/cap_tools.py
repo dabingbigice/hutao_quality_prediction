@@ -6,6 +6,7 @@ def set_cap_config(cap):
     # 设置高度和宽度
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, target_width)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, target_height)
+    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
     # 检查分辨率是否设置成功
     actual_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     actual_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))

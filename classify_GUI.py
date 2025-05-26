@@ -1,5 +1,4 @@
 import math
-import os
 import time
 from datetime import datetime
 from tkinter import *
@@ -8,30 +7,30 @@ from ellipse_fitting_img import single_file_predict as ellipse_fitting
 from ellipse_fitting_img import single_file_predict_online as ellipse_fitting_online
 import cv2
 import torch
-import numpy as np
 from PIL import Image, ImageTk, ImageDraw, ImageFont
 import tkinter.font as tkFont
 from tkinter import ttk
 from model.deeplab import DeeplabV3
-from utils.util_tools import load_artifacts
 from utils.cap_tools import set_cap_config
 import threading
 from excel_data import append_to_excel
-from utils.msg_send import stm32Serial
-
-my_class = ["background", "hutao_all", "walnut_half"]
-
-deeplab = DeeplabV3()
-
-port = 'COM7'
+from utils.msg_send import get_stm32_object
+import joblib
+import os
+import torch.nn as nn
+import numpy as np
 
 # 摄像头设置
 CAP_INDEX = f'H:\\01.mp4'
 CAP1_INDEX = f'H:\\001.mp4'
 
-# 加载保存的SVR模型
-# 加载模型和标准化器（假设您保存了scaler）
-model, scaler = load_artifacts(f"./svr_model_pkl/model_svr_seed3.pkl", f"./svr_model_pkl/scaler_svr_seed3.pkl")  # 修改路径
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+my_class = ["background", "hutao_all", "walnut_half"]
+deeplab = DeeplabV3()
+
+port = 'COM7'
+# ser_common = get_stm32_object(port=port)
+
 # 在全局变量区域新增
 CAPTURE_DIR = os.path.join('F:', "captured_images")  # 存储目录
 os.makedirs(CAPTURE_DIR, exist_ok=True)  # 自动创建目录
@@ -42,18 +41,87 @@ is_camera_running = False  # 摄像头状态标志
 is_camera_running1 = False  # 摄像头状态标志
 current_frame = None  # 当前帧缓存
 save_dir_captured_orign = "captured_orign_photos"
-ser_common = None
 # 添加目录存在性检查（自动创建缺失目录）
+# 在主线程初始化队列
 os.makedirs(CAPTURE_DIR, exist_ok=True)
+torch.cuda.empty_cache()
+torch.cuda.set_per_process_memory_fraction(0.5, 0)
+
+# ====================== 质量预测模型定义 ====================== #
+RBF_LAYER_CONFIG = [
+    (128, 0.05),  # 第一层：输入特征数->128
+    (64, 0.03)  # 第二层：128->64
+]
 
 
-# 图像处理
-def start_camera_thread(cap, canvas, is_running_flag, filename):
+class RBFLayer(nn.Module):
+    def __init__(self, in_features, num_centers, gamma_init=0.1):
+        super().__init__()
+        self.in_features = in_features
+        self.num_centers = num_centers
+        self.shortcut = nn.Linear(in_features, num_centers) if in_features != num_centers else nn.Identity()
+        self.gamma = nn.Parameter(torch.tensor(gamma_init))
+        self.centers = nn.Parameter(torch.Tensor(num_centers, in_features))
+        nn.init.xavier_normal_(self.centers)
+
+    def forward(self, x):
+        identity = self.shortcut(x)
+        x = x.unsqueeze(1)
+        c = self.centers.unsqueeze(0)
+        distances = torch.norm(x - c, p=2, dim=2)
+        return torch.exp(-self.gamma * distances ** 2) + identity
+
+
+class RBFNN(nn.Module):
+    def __init__(self, in_features, layer_config):
+        super().__init__()
+        self.layers = nn.ModuleList()
+        prev_dim = in_features
+        for units, gamma in layer_config:
+            self.layers.extend([
+                RBFLayer(prev_dim, units, gamma),
+                nn.BatchNorm1d(units),
+                nn.Dropout(0.3)
+            ])
+            prev_dim = units
+        self.output = nn.Sequential(
+            nn.Linear(prev_dim, 64),
+            nn.GELU(),
+            nn.Linear(64, 1)
+        )
+
+    def forward(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        return self.output(x)
+
+
+# 模型加载
+def load_artifacts(model_path, scaler_path):
+    model_path = f"./rbnn_radius_scatter/saved_models/seed_0/model_seed_0.pth"
+    scaler_path = f"./rbnn_radius_scatter/saved_models/seed_0/scaler_seed_0.pkl"
+
+    # 加载模型
+    checkpoint = torch.load(model_path, map_location='cuda')  # 即使原模型在GPU上，映射到CPU
+    model = checkpoint['model']
+    model.eval()  # 切换到评估模式
+
+    # 加载标准化器
+    scaler = joblib.load(scaler_path)
+    return model, scaler
+
+
+model_pre, scaler = load_artifacts(f"./rbnn_radius_scatter/saved_models/seed_93/model_seed_93.pth",
+                               f"./rbnn_radius_scatter/saved_models/seed_93/scaler_seed_93.pkl")  # 修改路径
+
+
+# 多线程图像处理
+def start_camera_thread(cap, canvas, is_running_flag, filename ):
     """启动摄像头更新线程并返回线程ID"""
     # 创建线程对象
     thread = threading.Thread(
         target=update_camera_frame,
-        args=(cap, canvas, is_running_flag, filename),
+        args=(cap, canvas, is_running_flag, filename ),
         name=str(filename),  # 可选：设置线程名称
         daemon=True
     )
@@ -69,7 +137,11 @@ def start_camera_thread(cap, canvas, is_running_flag, filename):
     }
 
 
-# 新增拍照功能,用于提取表型信息
+
+
+
+
+# 表型提取函数
 def capture_image():
     global current_frame
     is_camera_running = True
@@ -407,10 +479,12 @@ with torch.no_grad():
         # 保存图像
         cv2.imwrite(save_path, save_img)
         # 更新画布
+
         photo = ImageTk.PhotoImage(image=img)
         show_img.delete("all")
         show_img.create_image(0, 0, anchor="nw", image=photo)
         show_img.image = photo  # 保持引用
+
         # 输入框显示
         if current_cam_index == 'cap.jpg':
             var.set(f'{my_class[class_flag]}:{ratio:.2f}%')
@@ -470,30 +544,42 @@ with torch.no_grad():
                         arithmetic_a_b_avg, geometry_a_b_avg]
 
             # 2. 转换输入数据
-            input_data = np.array(FEATURES).reshape(1, -1)
+            # input_data = np.array(FEATURES).reshape(1, -1)
+            # 2. 转换输入数据
+            input_data = np.array(FEATURES).reshape(1, -1).astype(np.float32)  # 确保是数值数组
 
             # 3. 标准化处理（关键步骤！）
             scaled_data = scaler.transform(input_data)
 
+            # 4. 转换为 PyTorch Tensor
+            input_tensor = torch.from_numpy(scaled_data).to(device)  # device 需要与模型一致
+
+            # 3. 标准化处理（关键步骤！）
+            # scaled_data = scaler.transform(input_data)
+
             # 4. 预测
-            prediction = model.predict(scaled_data)
+            with torch.no_grad():
+                t1 =time.time()
+                prediction = model_pre(input_tensor).to(device)
+                t2 =time.time()
+                print(f'prediction_model耗时:{(t2-t1)*1000:.2f}ms')
 
-            print("\n预测结果:", prediction[0])
-
+            print(f"预测结果: {prediction.item():.2f}g")
+            pre_g = prediction.item()
             if current_cam_index == 'cap.jpg':
                 var_perimeter.set(f'{perimeter:.2f}px')
                 var_circularity.set(f'{circularity:.2f}')
                 var_aspect_ratio.set(f'A={a:.1f},B={b:.1f},/={a / b:.1f}')
-                var_input.set(str(prediction[0]))
+                var_input.set(str(f'{pre_g:.2f}'))
 
             # 以3g进行分类，但是以2.8克进行结算统计误差
-            if prediction[0] > 3 and class_flag == 1:
+            if pre_g > 3 and class_flag == 1:
                 # 大于3g且为1/2仁
-                stm32Serial.send_to_stm32(message=str(0))
+                # ser_common.send_to_stm32(message=str(0))
                 pass
-            elif prediction[0] < 3 and class_flag == 1:
+            elif pre_g < 3 and class_flag == 1:
                 # 小于3g且为1/2仁
-                stm32Serial.send_to_stm32(message=str(2))
+                # ser_common.send_to_stm32(message=str(2))
                 pass
             else:
                 # 1/4仁
@@ -508,7 +594,7 @@ with torch.no_grad():
 
     def open_close_cap_pred():
         global cap, is_camera_running, current_frame, cap1, is_camera_running1, ser_common
-        ser_common = stm32Serial(port=port, baudrate=9600)
+        # ser_common = stm32Serial(port=port, baudrate=9600)
         if not is_camera_running:
             # 初始化摄像头
             cap = cv2.VideoCapture(CAP_INDEX)
@@ -522,8 +608,15 @@ with torch.no_grad():
 
             # 初始化串口
 
-            thread_object, ident, native_id = start_camera_thread(cap, show_img_1, is_camera_running, 'cap.jpg')
-            thread_object, ident, native_id = start_camera_thread(cap1, show_img_2, is_camera_running1, 'cap_1.jpg')
+            thread_object, ident, native_id = start_camera_thread(cap, show_img_1, is_camera_running, 'cap.jpg',
+
+                                                                  )
+            thread_object, ident, native_id = start_camera_thread(cap1, show_img_2, is_camera_running1, 'cap_1.jpg',
+
+                                                                  )
+
+
+
             # update_camera_frame(cap, show_img_1, is_camera_running, 'cap.jpg')  # 开始更新画面
             # update_camera_frame(cap1, show_img_2, is_camera_running1, 'cap_1.jpg')  # 开始更新画面
         else:
@@ -534,15 +627,17 @@ with torch.no_grad():
             is_camera_running1 = False
             show_img_1.delete("all")  # 清空画布
             show_img_2.delete("all")  # 清空画布
-            ser_common.close_serial()  # 关闭串口
+            # ser_common.close_serial()  # 关闭串口
 
 
 def update_camera_frame(cap_invoke, show_img, is_camera_running_invoke, filename):
     global current_frame
+    torch.cuda.init()
     while is_camera_running_invoke:
         ret1, frame1 = cap_invoke.read()
         if ret1:
             img_process(frame1, show_img, filename, str(filename))
+
         # time.sleep(0.005)
     # 每10ms刷新一次（约100fps）
     # show_img.after(250, update_camera_frame, cap_invoke, show_img, is_camera_running_invoke, filename)

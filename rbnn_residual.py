@@ -122,75 +122,79 @@ class RBFNN(nn.Module):
 
 
 # ====================== 训练流程 ====================== #
-sum_mae, sum_r2 = 0, 0
+if __name__ == '__main__':
 
-for seed in range(100):
-    print("-" * 63)
-    torch.manual_seed(seed)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    sum_mae, sum_r2 = 0, 0
+    sum_max_error = 0
+    sum_max_error_precent = 0
+    for seed in range(100):
+        # seed += 58
+        print("-" * 63)
+        torch.manual_seed(seed)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # 数据加载和预处理
-    df = pd.read_excel("核桃仁表型信息_重新标定.xlsx", sheet_name="Sheet1")
-    FEATURES = ['hutao_area', 'hutao_perimeter', 'hutao_area/hutao_perimeter',
-                'hutao_a', 'hutao_b', 'arithmetic_a_b_h_avg', 'geometry_a_b_h_avg',
-                'hutao_SI', 'hutao_ET', 'hutao_EV', 'fai', 'arithmetic_a_b_avg',
-                'geometry_a_b_avg']
+        # 数据加载和预处理
+        df = pd.read_excel("核桃仁表型信息_重新标定.xlsx", sheet_name="Sheet1")
+        FEATURES = ['hutao_area', 'hutao_perimeter', 'hutao_area/hutao_perimeter',
+                    'hutao_a', 'hutao_b', 'arithmetic_a_b_h_avg', 'geometry_a_b_h_avg',
+                    'hutao_SI', 'hutao_ET', 'hutao_EV', 'fai', 'arithmetic_a_b_avg',
+                    'geometry_a_b_avg']
 
-    scaler = StandardScaler()
-    X = scaler.fit_transform(df[FEATURES])
-    y = df['g'].values.reshape(-1, 1).astype(np.float32)
+        scaler = StandardScaler()
+        X = scaler.fit_transform(df[FEATURES])
+        y = df['g'].values.reshape(-1, 1).astype(np.float32)
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=TEST_SIZE, random_state=seed)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=TEST_SIZE, random_state=seed)
 
-    # 数据加载器
-    train_loader = DataLoader(CustomDataset(X_train, y_train),
-                              batch_size=BATCH_SIZE, shuffle=True)
-    test_loader = DataLoader(CustomDataset(X_test, y_test),
-                             batch_size=BATCH_SIZE, shuffle=False)
+        # 数据加载器
+        train_loader = DataLoader(CustomDataset(X_train, y_train),
+                                  batch_size=BATCH_SIZE, shuffle=True)
+        test_loader = DataLoader(CustomDataset(X_test, y_test),
+                                 batch_size=BATCH_SIZE, shuffle=False)
 
-    # 模型和优化器
-    model = RBFNN(X.shape[1], RBF_LAYER_CONFIG).to(device)
-    optimizer = optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=10, factor=0.5)
+        # 模型和优化器
+        model = RBFNN(X.shape[1], RBF_LAYER_CONFIG).to(device)
+        optimizer = optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=10, factor=0.5)
 
-    # --------------------- 训练循环 ---------------------
-    best_val_loss = float('inf')
-    for epoch in range(300):
-        # 训练阶段
-        model.train()
-        train_loss = 0.0
-        for inputs, targets in train_loader:
-            inputs, targets = inputs.to(device), targets.to(device)
+        # --------------------- 训练循环 ---------------------
+        best_val_loss = float('inf')
+        for epoch in range(300):
+            # 训练阶段
+            model.train()
+            train_loss = 0.0
+            for inputs, targets in train_loader:
+                inputs, targets = inputs.to(device), targets.to(device)
 
-            optimizer.zero_grad()
-            outputs = model(inputs)
-            loss = nn.MSELoss()(outputs, targets)
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            optimizer.step()
-            train_loss += loss.item()
+                optimizer.zero_grad()
+                outputs = model(inputs)
+                loss = nn.MSELoss()(outputs, targets)
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+                optimizer.step()
+                train_loss += loss.item()
 
-        # 验证阶段
-        model.eval()
-        val_loss = 0.0
-        predictions = []
-        with torch.no_grad():
-            for inputs, targets in test_loader:
-                outputs = model(inputs.to(device))
-                val_loss += nn.MSELoss()(outputs, targets.to(device)).item()
-                predictions.append(outputs.cpu().numpy())
+            # 验证阶段
+            model.eval()
+            val_loss = 0.0
+            predictions = []
+            with torch.no_grad():
+                for inputs, targets in test_loader:
+                    outputs = model(inputs.to(device))
+                    val_loss += nn.MSELoss()(outputs, targets.to(device)).item()
+                    predictions.append(outputs.cpu().numpy())
 
-        # 学习率调度
-        scheduler.step(val_loss)
+            # 学习率调度
+            scheduler.step(val_loss)
 
-        # 每20个epoch打印进度
-        if (epoch + 1) % 20 == 0:
-            y_pred = np.concatenate(predictions).flatten()
-            print(f'Epoch [{epoch + 1}/{NUM_EPOCHS}] '
-                  f'Train Loss: {train_loss / len(train_loader):.4f} '
-                  f'Val Loss: {val_loss / len(test_loader):.4f}')
+            # 每20个epoch打印进度
+            if (epoch + 1) % 20 == 0:
+                y_pred = np.concatenate(predictions).flatten()
+                print(f'Epoch [{epoch + 1}/{NUM_EPOCHS}] '
+                      f'Train Loss: {train_loss / len(train_loader):.4f} '
+                      f'Val Loss: {val_loss / len(test_loader):.4f}')
 
-        # 最终评估
+            # 最终评估
         y_pred, y_true = [], []
         with torch.no_grad():
             for inputs, targets in test_loader:
@@ -201,12 +205,36 @@ for seed in range(100):
         y_pred = np.array(y_pred)
         mae = np.mean(np.abs(y_true - y_pred))
         r2 = r2_score(y_true, y_pred)
-
+        # 创建模型保存目录
+        model_save_dir = f"rbnn_radius_scatter/saved_models/seed_{seed}"
+        os.makedirs(model_save_dir, exist_ok=True)
         # 绘制散点图
-        plot_scatter(np.array(y_true), np.array(y_pred),
-                     seed=seed, mae=mae, r2=r2)
+        max_error, precent = plot_scatter(np.array(y_true), np.array(y_pred),
+                                          seed=seed, mae=mae, r2=r2)
+        # 保存完整模型信息
+        torch.save({
+            'model': model,
+            'scaler': scaler,
+            'features': FEATURES,
+            'config': RBF_LAYER_CONFIG,
+            'performance': {
+                'mae': mae,
+                'r2': r2,
+                'max_error': max_error
+            }
+        }, os.path.join(model_save_dir, f'model_seed_{seed}.pth'))
+
+        # 同时保存标准化器
+
+        joblib.dump(scaler, os.path.join(model_save_dir, f'scaler_seed_{seed}.pkl'))
+
+        sum_max_error += max_error
+        sum_max_error_precent += precent
+        print(f'训练结束_RANDOM_SEED_{seed}')
 
         sum_mae += mae
         sum_r2 += r2
 
-print(f'\nAverage MAE: {sum_mae / 100:.2f}  R²: {sum_r2 / 100:.2f}')
+    print(f'\nAverage MAE: {sum_mae / 100:.2f}  R²: {sum_r2 / 100:.2f}')
+    print(f"sum_max_error: {sum_max_error / 100:.2f}")
+    print(f"sum_max_error_precent: {sum_max_error_precent / 100:.2f}")
